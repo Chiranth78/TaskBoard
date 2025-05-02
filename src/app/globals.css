@@ -8,76 +8,42 @@ body {
 
 @layer base {
   :root {
-    --background: 60 56% 93%; /* #F5F5DC - Light Beige */
-    --foreground: 30 10% 20%; /* Dark Brown/Gray */
-    --card: 60 56% 93%; /* Light Beige */
-    --card-foreground: 30 10% 20%; /* Dark Brown/Gray */
-    --popover: 60 56% 93%; /* Light Beige */
-    --popover-foreground: 30 10% 20%; /* Dark Brown/Gray */
-    --primary: 16 100% 66%; /* #FF7F50 - Coral */
-    --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 94 41% 75%; /* #A9D18E - Muted Green */
-    --secondary-foreground: 90 30% 25%; /* Dark Green/Gray */
-    --muted: 60 30% 88%; /* Slightly Darker Beige */
-    --muted-foreground: 60 5% 50%; /* Gray */
-    --accent: 16 80% 70%; /* Desaturated Coral */
-    --accent-foreground: 0 0% 100%; /* White */
-    --destructive: 0 84.2% 60.2%; /* Standard Red */
-    --destructive-foreground: 0 0% 98%; /* Standard White */
-    --border: 60 30% 85%; /* Subtle Border */
-    --input: 60 30% 85%; /* Subtle Border */
-    --ring: 16 100% 66%; /* Coral */
-    --chart-1: 16 100% 66%; /* Coral */
-    --chart-2: 94 41% 75%; /* Muted Green */
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    /* Dark theme inspired by the provided image */
+    --background: 220 15% 18%; /* Dark Gray/Blue */
+    --foreground: 210 40% 98%; /* Almost White */
+    --card: 220 15% 22%; /* Slightly lighter dark */
+    --card-foreground: 210 40% 98%;
+    --popover: 220 15% 15%; /* Darker popover */
+    --popover-foreground: 210 40% 98%;
+    --primary: 180 70% 55%; /* Teal/Cyan Accent */
+    --primary-foreground: 220 20% 15%; /* Dark text on primary */
+    --secondary: 220 10% 30%; /* Muted Dark Gray/Blue */
+    --secondary-foreground: 210 30% 90%; /* Lighter text on secondary */
+    --muted: 220 10% 25%; /* Darker Muted */
+    --muted-foreground: 210 20% 65%; /* Grayer Text */
+    --accent: 180 60% 50%; /* Slightly darker Teal/Cyan */
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 50%; /* Red */
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 15% 30%; /* Subtle border */
+    --input: 220 15% 28%; /* Input background */
+    --ring: 180 70% 60%; /* Brighter Teal/Cyan for rings */
+    --chart-1: 180 70% 55%;
+    --chart-2: 210 60% 60%;
+    --chart-3: 30 70% 60%;
+    --chart-4: 270 60% 65%;
+    --chart-5: 120 50% 55%;
     --radius: 0.5rem;
-    --sidebar-background: 60 40% 90%; /* Slightly darker beige for sidebar */
-    --sidebar-foreground: 30 10% 20%; /* Dark Brown/Gray */
-    --sidebar-primary: 16 100% 66%; /* Coral */
-    --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 16 80% 70%; /* Desaturated Coral */
-    --sidebar-accent-foreground: 0 0% 100%; /* White */
-    --sidebar-border: 60 30% 85%; /* Subtle Border */
-    --sidebar-ring: 16 100% 66%; /* Coral */
+
+    /* Remove sidebar specific variables as sidebar is removed */
   }
 
-  .dark {
-    /* Define dark mode colors - adapt TaskGrid theme */
-    --background: 30 10% 15%; /* Dark Brown/Gray */
-    --foreground: 60 30% 90%; /* Light Beige variant */
-    --card: 30 10% 18%; /* Slightly lighter dark */
-    --card-foreground: 60 30% 90%;
-    --popover: 30 10% 15%;
-    --popover-foreground: 60 30% 90%;
-    --primary: 16 80% 60%; /* Slightly darker Coral */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 94 30% 65%; /* Slightly darker Muted Green */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 30 10% 25%;
-    --muted-foreground: 60 10% 60%;
-    --accent: 16 70% 65%; /* Darker Desaturated Coral */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 70% 50%; /* Darker Red */
-    --destructive-foreground: 0 0% 98%;
-    --border: 30 10% 30%;
-    --input: 30 10% 30%;
-    --ring: 16 80% 60%; /* Darker Coral */
-    --chart-1: 16 80% 60%;
-    --chart-2: 94 30% 65%;
-    --chart-3: 197 37% 34%;
-    --chart-4: 43 74% 56%;
-    --chart-5: 27 87% 57%;
-    --sidebar-background: 30 10% 12%; /* Very dark */
-    --sidebar-foreground: 60 30% 90%;
-    --sidebar-primary: 16 80% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 16 70% 65%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 30 10% 30%;
-    --sidebar-ring: 16 80% 60%;
-  }
+  /* Keep dark theme as the default, remove the .dark class requirement */
+   /*
+   .dark {
+     // Dark mode variables were here, now they are the default root variables
+   }
+   */
 }
 
 @layer base {
@@ -86,15 +52,26 @@ body {
   }
   body {
     @apply bg-background text-foreground font-sans; /* Apply background, text color, and font */
+    /* Ensure body takes full height for sticky bottom nav */
+    @apply min-h-screen flex flex-col;
+  }
+
+  main {
+     /* Allow main content to grow and push footer down */
+     @apply flex-grow;
+     /* Add padding for the fixed bottom navigation */
+     @apply pb-20; /* Adjust based on bottom nav height */
   }
 }
 
 /* Custom class for completed tasks */
 .task-completed {
-  @apply bg-secondary/30 border-secondary; /* Use secondary color (Muted Green) with opacity */
+  @apply bg-secondary/30 border-secondary opacity-60; /* Use secondary color (Muted Dark Gray/Blue) with opacity */
 }
 
 /* Custom class for urgent tasks */
 .task-urgent {
-  @apply border-primary ring-2 ring-primary/50; /* Use primary color (Coral) for border/ring */
+   /* Subtle indication for urgent tasks in dark mode */
+  @apply border-primary/50 ring-1 ring-primary/30;
 }
+

@@ -21,11 +21,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 interface AddEditTaskDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (taskData: Omit<Task, 'id' | 'createdAt'> | Task) => void;
+  onSave: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completed' | 'gridPosition'> | Task) => void; // Adjusted type
   task: Task | null; // Pass the task for editing, null for adding
 }
 
@@ -34,43 +35,60 @@ export default function AddEditTaskDialog({ isOpen, onClose, onSave, task }: Add
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const { toast } = useToast(); // Initialize toast
 
   useEffect(() => {
-    if (task) {
-      // Populate form if editing a task
-      setTitle(task.title);
-      setDescription(task.description || '');
-      setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
-      setPriority(task.priority);
-    } else {
-      // Reset form if adding a new task
-      setTitle('');
-      setDescription('');
-      setDueDate(undefined);
-      setPriority('medium');
+    if (isOpen) { // Reset form only when dialog opens
+        if (task) {
+          // Populate form if editing a task
+          setTitle(task.title);
+          setDescription(task.description || '');
+          setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
+          setPriority(task.priority);
+        } else {
+          // Reset form if adding a new task
+          setTitle('');
+          setDescription('');
+          setDueDate(undefined);
+          setPriority('medium');
+        }
     }
   }, [task, isOpen]); // Re-run effect when task or isOpen changes
 
   const handleSave = () => {
-    if (!title) {
+    if (!title.trim()) {
       // Basic validation: Title is required
-      alert("Task title cannot be empty."); // Replace with better validation feedback (e.g., ShadCN Toast)
+       toast({
+         title: "Validation Error",
+         description: "Task title cannot be empty.",
+         variant: "destructive",
+       });
       return;
     }
 
     const taskData = {
-      title,
-      description,
-      dueDate: dueDate ? dueDate.toISOString() : undefined, // Store as ISO string or undefined
+      title: title.trim(),
+      description: description.trim(),
+      dueDate: dueDate ? dueDate : undefined, // Pass Date object or undefined
       priority,
     };
 
+
     if (task) {
-      // If editing, include id and other existing properties
-      onSave({ ...task, ...taskData });
+      // If editing, spread the existing task and override with new data
+       onSave({
+          ...task, // Spread existing task properties (id, createdAt, completed, etc.)
+          ...taskData, // Override with new data
+          dueDate: taskData.dueDate?.toISOString(), // Ensure dueDate is ISO string if exists
+          updatedAt: new Date(), // Add/update updatedAt timestamp
+       });
     } else {
       // If adding, just send the new data
-      onSave(taskData as Omit<Task, 'id' | 'createdAt'>); // Type assertion needed here
+      // The parent component (TaskGridBoard) will add id, createdAt, completed, etc.
+       onSave({
+           ...taskData,
+           dueDate: taskData.dueDate?.toISOString(), // Ensure dueDate is ISO string if exists
+        } as Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completed' | 'gridPosition'>); // Type assertion needed here
     }
     onClose(); // Close the dialog after saving
   };
@@ -78,40 +96,43 @@ export default function AddEditTaskDialog({ isOpen, onClose, onSave, task }: Add
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      {/* Apply dark theme styles to DialogContent */}
+      <DialogContent className="sm:max-w-[425px] bg-card border-border text-card-foreground">
         <DialogHeader>
           <DialogTitle>{task ? 'Edit Task' : 'Add New Task'}</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-muted-foreground">
             {task ? 'Update the details of your task.' : 'Fill in the details for your new task.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="title" className="text-right">
+            <Label htmlFor="title" className="text-right text-muted-foreground">
               Title
             </Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="col-span-3"
+              className="col-span-3 bg-input border-border focus:ring-primary" // Dark theme input style
               required
+              placeholder="E.g., Finish project report"
             />
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="description" className="text-right pt-2">
+            <Label htmlFor="description" className="text-right pt-2 text-muted-foreground">
               Description
             </Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="col-span-3"
+              className="col-span-3 bg-input border-border focus:ring-primary" // Dark theme textarea style
               rows={3}
+               placeholder="(Optional) Add more details..."
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="dueDate" className="text-right">
+            <Label htmlFor="dueDate" className="text-right text-muted-foreground">
               Due Date
             </Label>
              <Popover>
@@ -119,7 +140,7 @@ export default function AddEditTaskDialog({ isOpen, onClose, onSave, task }: Add
                 <Button
                     variant={"outline"}
                     className={cn(
-                    "w-[280px] justify-start text-left font-normal col-span-3",
+                    "w-full justify-start text-left font-normal col-span-3 bg-input border-border hover:bg-input/80", // Dark theme button style
                     !dueDate && "text-muted-foreground"
                     )}
                 >
@@ -127,7 +148,9 @@ export default function AddEditTaskDialog({ isOpen, onClose, onSave, task }: Add
                     {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
                 </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                 {/* Apply dark theme styles to PopoverContent */}
+                <PopoverContent className="w-auto p-0 bg-popover border-border text-popover-foreground">
+                 {/* Calendar itself adapts via CSS variables */}
                 <Calendar
                     mode="single"
                     selected={dueDate}
@@ -138,14 +161,15 @@ export default function AddEditTaskDialog({ isOpen, onClose, onSave, task }: Add
             </Popover>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="priority" className="text-right">
+            <Label htmlFor="priority" className="text-right text-muted-foreground">
               Priority
             </Label>
+             {/* Select component adapts via CSS variables, ensure trigger/content have dark styles */}
             <Select onValueChange={(value: 'low' | 'medium' | 'high') => setPriority(value)} value={priority}>
-              <SelectTrigger className="col-span-3">
+              <SelectTrigger className="col-span-3 bg-input border-border focus:ring-primary">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-popover border-border text-popover-foreground">
                 <SelectItem value="low">Low</SelectItem>
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="high">High</SelectItem>
@@ -155,11 +179,11 @@ export default function AddEditTaskDialog({ isOpen, onClose, onSave, task }: Add
         </div>
         <DialogFooter>
            <DialogClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" className="border-border hover:bg-muted"> {/* Dark theme outline button */}
                 Cancel
                 </Button>
            </DialogClose>
-          <Button type="button" onClick={handleSave}>Save Task</Button>
+          <Button type="button" onClick={handleSave}>Save Task</Button> {/* Primary button uses theme colors */}
         </DialogFooter>
       </DialogContent>
     </Dialog>

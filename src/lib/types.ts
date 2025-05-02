@@ -6,6 +6,7 @@ export interface Task {
   priority: 'low' | 'medium' | 'high';
   completed: boolean;
   createdAt: Date;
+  updatedAt: Date; // Added update timestamp
   gridPosition?: { row: number; col: number }; // For grid layout
   category?: string; // Optional category
 }

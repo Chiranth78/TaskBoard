@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Edit, Trash2, MoreVertical } from 'lucide-react';
-import { format, formatDistanceToNow, isToday, isPast } from 'date-fns';
+import { Edit, Trash2, MoreVertical, AlertCircle } from 'lucide-react'; // Added AlertCircle for overdue
+import { format, formatDistanceToNow, isToday, isPast, isValid } from 'date-fns'; // Ensure isValid is imported
 import { cn } from '@/lib/utils';
 
 interface TaskCardProps {
@@ -22,34 +22,46 @@ export default function TaskCard({ task, onEdit, onDelete, onToggleComplete }: T
     onToggleComplete(id);
   };
 
-  const getDueDateText = () => {
-    if (!dueDate) return null;
+   const getDueDateInfo = () => {
+    if (!dueDate) return { text: null, isOverdue: false, isUrgent: false };
     const date = typeof dueDate === 'string' ? new Date(dueDate) : dueDate;
-    if (Number.isNaN(date.getTime())) return null; // Invalid date check
+    if (!isValid(date)) return { text: null, isOverdue: false, isUrgent: false }; // Check if date is valid
 
-    const formattedDate = format(date, 'MMM d');
-    if (isToday(date)) return `Today, ${formattedDate}`;
-    if (isPast(date) && !completed) return `Overdue, ${formattedDate}`;
-    return `Due ${formattedDate} (${formatDistanceToNow(date, { addSuffix: true })})`;
+    const now = new Date();
+    const isTaskPast = isPast(date) && !isToday(date); // Check if it's strictly past, not today
+    const isTaskToday = isToday(date);
+
+    let text = `Due ${format(date, 'MMM d')}`;
+    let relativeText = formatDistanceToNow(date, { addSuffix: true });
+
+    if (isTaskToday) text = `Due Today`;
+    else if (isTaskPast) text = `Overdue`;
+    // else text remains 'Due MMM d'
+
+    const isOverdue = isTaskPast && !completed;
+    // Consider today's tasks urgent as well if high priority
+    const isUrgent = (isTaskToday || isOverdue) && priority === 'high' && !completed;
+
+    return { text, relativeText: !isTaskToday && !isTaskPast ? `(${relativeText})` : null , isOverdue, isUrgent };
   };
 
-  const dueDateText = getDueDateText();
-  const isOverdue = dueDate && isPast(new Date(dueDate)) && !completed;
+
+  const { text: dueDateText, relativeText: dueDateRelativeText, isOverdue, isUrgent } = getDueDateInfo();
 
   return (
     <Card className={cn(
-      "flex flex-col justify-between transition-shadow duration-200 ease-in-out hover:shadow-md",
-      completed && "task-completed opacity-70", // Use custom class for completed style
-      priority === 'high' && !completed && "task-urgent" // Use custom class for urgent style
+      "flex flex-col justify-between transition-shadow duration-200 ease-in-out hover:shadow-lg bg-card", // Use card background
+      completed && "task-completed", // Use custom class for completed style
+      isUrgent && "task-urgent" // Use custom class for urgent style
     )}>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-        <div className="space-y-1">
-           <CardTitle className={cn("text-lg font-medium", completed && "line-through text-muted-foreground")}>{title}</CardTitle>
-           {description && <CardDescription className={cn("text-sm", completed && "line-through text-muted-foreground")}>{description}</CardDescription>}
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 p-4"> {/* Adjusted padding */}
+        <div className="space-y-1 flex-1 mr-2"> {/* Added flex-1 and margin */}
+           <CardTitle className={cn("text-base font-medium leading-tight", completed && "line-through text-muted-foreground/80")}>{title}</CardTitle>
+           {description && <CardDescription className={cn("text-xs text-muted-foreground pt-1", completed && "line-through text-muted-foreground/80")}>{description}</CardDescription>}
         </div>
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-foreground"> {/* Smaller icon button */}
                     <MoreVertical className="h-4 w-4" />
                     <span className="sr-only">Task Options</span>
                 </Button>
@@ -66,16 +78,15 @@ export default function TaskCard({ task, onEdit, onDelete, onToggleComplete }: T
             </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>
-      <CardContent className="pb-4 pt-0">
-        {/* Add more details like category or subtasks here if needed */}
-      </CardContent>
-      <CardFooter className="flex justify-between items-center pt-2 border-t">
+      {/* CardContent removed as description is in header */}
+      <CardFooter className="flex justify-between items-center p-3 pt-2 border-t border-border/50"> {/* Adjusted padding and border */}
         <div className="flex items-center space-x-2">
             <Checkbox
               id={`complete-${id}`}
               checked={completed}
               onCheckedChange={handleCheckboxChange}
               aria-label={completed ? "Mark task as incomplete" : "Mark task as complete"}
+              className="h-5 w-5" // Slightly larger checkbox
             />
              <label
               htmlFor={`complete-${id}`}
@@ -83,14 +94,22 @@ export default function TaskCard({ task, onEdit, onDelete, onToggleComplete }: T
             >
               {completed ? "Completed" : "Mark Complete"}
             </label>
-           <Badge variant={priority === 'high' ? 'destructive' : priority === 'medium' ? 'secondary' : 'outline'} className="capitalize">
-            {priority}
+            {/* Badge remains for priority, but maybe less prominent */}
+            <Badge variant={priority === 'high' ? 'destructive' : priority === 'medium' ? 'secondary' : 'outline'} className="capitalize text-xs px-1.5 py-0.5">
+                {priority}
             </Badge>
+
         </div>
 
          {dueDateText && (
-           <span className={cn("text-xs", completed ? "text-muted-foreground" : isOverdue ? "text-destructive font-medium" : "text-muted-foreground")}>
-            {dueDateText}
+           <span className={cn(
+                "text-xs flex items-center gap-1",
+                completed ? "text-muted-foreground/80" :
+                isOverdue ? "text-destructive font-medium" :
+                "text-muted-foreground"
+                )}>
+                {isOverdue && <AlertCircle className="h-3 w-3 text-destructive" />}
+                {dueDateText} <span className="hidden sm:inline">{dueDateRelativeText}</span> {/* Show relative time on larger screens */}
            </span>
          )}
 
