@@ -3,14 +3,14 @@
 
 import type { Task, TaskList } from '@/lib/types';
 import { useState, useEffect, useMemo } from 'react';
-import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
-import { Input } from '@/components/ui/input'; // For adding new task inline
-import { Plus, ListChecks, MoreVertical, ArrowUpDown } from 'lucide-react'; // Icons
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Plus, ListChecks, MoreVertical, ArrowUpDown, Trash2 } from 'lucide-react'; // Added Trash2
+// Removed TaskListTabs import
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import TaskListTabs from './TaskListTabs';
 import TaskItem from './TaskItem';
 import CompletedTasksAccordion from './CompletedTasksAccordion';
-import AddEditTaskDialog from '../taskgrid/AddEditTaskDialog'; // Reuse dialog for editing
+import AddEditTaskDialog from '../taskgrid/AddEditTaskDialog';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -18,7 +18,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"; // For list options
+  DropdownMenuSeparator, // Added Separator
+} from "@/components/ui/dropdown-menu";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -29,45 +30,52 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-  } from "@/components/ui/alert-dialog" // For delete confirmation
+  } from "@/components/ui/alert-dialog"
 
 
 interface TaskListSectionProps {
   initialTasks: Task[];
   initialTaskLists: TaskList[];
-  onTasksChange: (tasks: Task[]) => void; // Callback to update parent state
-  onTaskListsChange: (lists: TaskList[]) => void; // Callback to update parent state
+  selectedListId: string | null; // Receive selected list ID from parent
+  onTasksChange: (tasks: Task[]) => void;
+  onTaskListsChange: (lists: TaskList[]) => void;
+  onSelectListChange: (listId: string | null) => void; // Prop to notify parent about list changes (like deletion)
 }
 
 export default function TaskListSection({
   initialTasks,
   initialTaskLists,
+  selectedListId, // Use prop
   onTasksChange,
-  onTaskListsChange
+  onTaskListsChange,
+  onSelectListChange
 }: TaskListSectionProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [taskLists, setTaskLists] = useState<TaskList[]>(initialTaskLists);
-  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  // Removed selectedListId state, using prop instead
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isMounted, setIsMounted] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-   const [isAddListDialogOpen, setIsAddListDialogOpen] = useState(false); // State for adding list
-   const [newListName, setNewListName] = useState(''); // State for new list name
-   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
-   const [listToDelete, setListToDelete] = useState<TaskList | null>(null);
+  const [isAddListDialogOpen, setIsAddListDialogOpen] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
+  const [listToDelete, setListToDelete] = useState<TaskList | null>(null);
 
   const { toast } = useToast();
 
   useEffect(() => {
     setIsMounted(true);
-    // Select the first list by default if none is selected and lists exist
-    if (!selectedListId && initialTaskLists.length > 0) {
-      setSelectedListId(initialTaskLists[0].id);
-    }
+    // No need to set default selectedListId here, parent handles it
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialTaskLists]); // Depend only on initial lists
+  }, []); // Depend only on initial lists
 
+
+   useEffect(() => {
+       // Update local state if initial props change
+       setTasks(initialTasks);
+       setTaskLists(initialTaskLists);
+   }, [initialTasks, initialTaskLists]);
 
    useEffect(() => {
        // Callbacks to notify parent about state changes
@@ -90,9 +98,7 @@ export default function TaskListSection({
   }, [tasks, selectedListId]);
 
 
-  const handleSelectList = (listId: string) => {
-    setSelectedListId(listId);
-  };
+  // handleSelectList removed, selection is done in parent
 
   const handleAddTask = () => {
     if (!newTaskTitle.trim() || !selectedListId) return;
@@ -175,8 +181,6 @@ export default function TaskListSection({
             toast({ title: "Task Updated", description: `"${updatedTask.title}" saved.` });
              // TODO: API call to update task
         } else {
-            // This case should ideally not happen from the TaskItem edit flow
-            // but is here for completeness. Adding new tasks is handled by handleAddTask.
              console.warn("handleSaveTask called without a task ID. Use handleAddTask for new tasks.");
         }
        setIsEditDialogOpen(false);
@@ -185,6 +189,7 @@ export default function TaskListSection({
 
 
     // --- Add/Delete List Handlers ---
+    // handleAddListClick is now handled by parent via TaskListTabs
     const handleAddListClick = () => {
         setNewListName(''); // Reset name field
         setIsAddListDialogOpen(true);
@@ -201,7 +206,7 @@ export default function TaskListSection({
             createdAt: new Date(),
         };
         setTaskLists(prev => [...prev, newList]);
-        setSelectedListId(newList.id); // Select the newly added list
+        onSelectListChange(newList.id); // Notify parent to select the newly added list
         setIsAddListDialogOpen(false);
         toast({ title: "List Created", description: `"${newList.name}" added.` });
         // TODO: API call to create list
@@ -221,15 +226,15 @@ export default function TaskListSection({
         // Filter out the list to delete _before_ updating state
         const remainingLists = taskLists.filter(l => l.id !== listIdToDelete);
 
-        // Update the list state
+        // Update the list state (triggers parent update via useEffect)
         setTaskLists(remainingLists);
 
-        // Delete associated tasks
+        // Delete associated tasks (triggers parent update via useEffect)
         setTasks(prev => prev.filter(t => t.listId !== listIdToDelete));
 
-        // If the deleted list was selected, select the first available list or null
+        // If the deleted list was selected, notify parent to select the first available list or null
         if (selectedListId === listIdToDelete) {
-           setSelectedListId(remainingLists.length > 0 ? remainingLists[0].id : null);
+           onSelectListChange(remainingLists.length > 0 ? remainingLists[0].id : null);
         }
 
         toast({ title: "List Deleted", description: `"${listName}" and all its tasks were deleted.`, variant: "destructive" });
@@ -243,7 +248,7 @@ export default function TaskListSection({
     // Skeleton loader for the task list section
     return (
       <div className="space-y-4">
-        <Skeleton className="h-8 w-3/4 mb-4" /> {/* Placeholder for tabs */}
+        {/* Removed Skeleton for tabs */}
         <Card>
           <CardHeader className="p-4 border-b border-border">
              <div className="flex justify-between items-center">
@@ -265,13 +270,7 @@ export default function TaskListSection({
 
   return (
     <div className="space-y-4">
-       {/* Tabs for Task Lists */}
-       <TaskListTabs
-          lists={taskLists}
-          selectedListId={selectedListId}
-          onSelectList={handleSelectList}
-          onAddList={handleAddListClick}
-       />
+       {/* TaskListTabs are now rendered in page.tsx */}
 
       {/* Main Task Area */}
       {selectedListId && selectedList ? (
@@ -290,20 +289,22 @@ export default function TaskListSection({
                          <DropdownMenuItem onClick={() => alert('Rename list functionality coming soon!')}>
                              <ArrowUpDown className="mr-2 h-4 w-4" /> Rename list
                          </DropdownMenuItem>
-                         {/* Add Delete option */}
-                          <AlertDialogTrigger asChild>
-                             <DropdownMenuItem
+                         <DropdownMenuSeparator />
+                          {/* Use AlertDialogTrigger within DropdownMenuItem for delete confirmation */}
+                         <AlertDialogTrigger asChild>
+                            <DropdownMenuItem
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                onSelect={(e) => e.preventDefault()} // Prevent auto close before confirmation
-                                // No onClick needed here, trigger handles it
-                             >
-                                Delete list
-                             </DropdownMenuItem>
+                                onSelect={(e) => {
+                                    e.preventDefault(); // Prevent default closing
+                                    handleDeleteListClick(selectedList); // Trigger confirmation dialog
+                                }}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete list
+                            </DropdownMenuItem>
                          </AlertDialogTrigger>
                      </DropdownMenuContent>
                  </DropdownMenu>
              </div>
-
           </CardHeader>
           <CardContent className="p-4 space-y-2">
              {/* Incomplete Tasks */}
@@ -357,9 +358,11 @@ export default function TaskListSection({
              <p className="text-muted-foreground">
                  {taskLists.length > 0 ? "Select a list to view tasks" : "No task lists available."}
              </p>
-             <Button onClick={handleAddListClick} size="sm" className="mt-4">
-                <Plus className="mr-2 h-4 w-4" /> Create New List
-             </Button>
+             {/* Button to add list - Trigger dialog managed by parent now */}
+             {/* Consider adding a way to trigger the parent's add list dialog here if needed */}
+              {/* <Button onClick={handleAddListClick} size="sm" className="mt-4">
+                 <Plus className="mr-2 h-4 w-4" /> Create New List
+              </Button> */}
           </CardContent>
         </Card>
       )}
@@ -374,35 +377,18 @@ export default function TaskListSection({
             currentListId={selectedListId} // Pass current list id
         />
 
-        {/* Add List Dialog (using AlertDialog for simplicity) */}
+        {/* Add List Dialog (Now triggered by parent, but definition stays here or moves to parent) */}
+        {/* If keeping state here, it won't open unless triggered locally */}
+        {/* It's better practice to move this dialog logic entirely to the parent (page.tsx) */}
+        {/*
         <AlertDialog open={isAddListDialogOpen} onOpenChange={setIsAddListDialogOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Create New Task List</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Enter a name for your new list.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <Input
-                    placeholder="List name"
-                    value={newListName}
-                    onChange={(e) => setNewListName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSaveNewList()}
-                    className="my-4"
-                    autoFocus
-                 />
-                <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleSaveNewList}>Create</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
+             // ... Content ...
         </AlertDialog>
+        */}
 
-         {/* Confirm Delete List Dialog - Attached to the trigger inside DropdownMenu */}
+
+         {/* Confirm Delete List Dialog */}
           <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
-             {/* <AlertDialogTrigger asChild>
-                // Trigger is now part of the DropdownMenuItem above
-             </AlertDialogTrigger> */}
              <AlertDialogContent>
                  <AlertDialogHeader>
                  <AlertDialogTitle>Delete List "{listToDelete?.name}"?</AlertDialogTitle>
@@ -412,19 +398,18 @@ export default function TaskListSection({
                  </AlertDialogHeader>
                  <AlertDialogFooter>
                  <AlertDialogCancel onClick={() => setListToDelete(null)}>Cancel</AlertDialogCancel>
-                 {/* Apply destructive variant styling */}
                  <AlertDialogAction onClick={confirmDeleteList} className={buttonVariants({ variant: "destructive" })}>Delete</AlertDialogAction>
                  </AlertDialogFooter>
              </AlertDialogContent>
          </AlertDialog>
 
 
-         {/* Floating Add Button (Consistent with Task Grid) */}
+         {/* Floating Add Button */}
         {selectedListId && (
              <Button
                 onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Add a task"]')?.focus()} // Focus input on click
-                size="lg" // Larger button
-                className="fixed bottom-20 right-4 z-30 rounded-full shadow-lg h-14 w-14 p-0" // Position bottom right, above nav
+                size="lg"
+                className="fixed bottom-20 right-4 z-30 rounded-full shadow-lg h-14 w-14 p-0"
                 aria-label="Add New Task"
              >
                 <Plus className="h-6 w-6" />

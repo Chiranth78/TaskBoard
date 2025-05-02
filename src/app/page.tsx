@@ -3,13 +3,13 @@
 
 import type { Task, TaskList, JournalEntry } from '@/lib/types';
 import { useState } from 'react';
-// import TaskGridBoard from "@/components/taskgrid/TaskGridBoard"; // Replaced with TaskListSection
-import TaskListSection from "@/components/tasks/TaskListSection"; // Import new component
+import TaskListSection from "@/components/tasks/TaskListSection"; // Import task list component
 import JournalSection from "@/components/journal/JournalSection";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNavigation from "@/components/layout/BottomNavigation";
+import TaskListTabs from '@/components/tasks/TaskListTabs'; // Import tabs component
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from '@/components/ui/separator';
+// import { Separator } from '@/components/ui/separator'; // Removed separator
 
 // Mock data - replace with actual data fetching
 const mockTaskLists: TaskList[] = [
@@ -43,6 +43,11 @@ export default function Home() {
   const [activeView, setActiveView] = useState<'journal' | 'tasks' | 'calendar' | 'search'>('tasks'); // Default to tasks view
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [taskLists, setTaskLists] = useState<TaskList[]>(mockTaskLists);
+  const [selectedListId, setSelectedListId] = useState<string | null>(
+      taskLists.length > 0 ? taskLists[0].id : null // Initialize selected list
+  );
+   const [isAddListDialogOpen, setIsAddListDialogOpen] = useState(false); // Add list dialog state moved here
+   const [newListName, setNewListName] = useState(''); // New list name state moved here
 
   // Handlers to update state (to be passed down)
   const handleUpdateTasks = (updatedTasks: Task[]) => {
@@ -55,34 +60,42 @@ export default function Home() {
     // TODO: Persist changes
   }
 
+  const handleSelectList = (listId: string) => {
+      setSelectedListId(listId);
+  }
+
+   // Handlers moved from TaskListSection
+   const handleAddListClick = () => {
+        setNewListName(''); // Reset name field
+        setIsAddListDialogOpen(true);
+   };
+
+   // Note: handleSaveNewList, handleDeleteListClick, confirmDeleteList
+   // would also need to be moved here if list management (add/delete)
+   // functionality should be triggered from the top TaskListTabs area.
+   // For now, keeping list add/delete within TaskListSection might be simpler.
+   // If list management is moved here, pass necessary state/handlers down.
+
+
   return (
     <div className="flex min-h-screen flex-col">
       <AppHeader />
 
-      <main className="flex-1 p-4 md:p-6 space-y-4">
-         {/* Placeholder Quote Section - Remove if not needed */}
-         <blockquote className="border-l-4 border-muted pl-4 italic text-muted-foreground text-sm my-6">
-           One way to get the most out of life is to look upon it as an adventure.
-           <footer className="mt-1 block text-xs not-italic text-muted-foreground/80">— William Feather</footer>
-         </blockquote>
-
-          {/* Placeholder Week View Section - Remove if not needed */}
-         <div className="mb-6">
-             <div className="flex justify-between items-center text-xs text-muted-foreground mb-2 px-2">
-                <span>W18 &gt;</span> {/* Placeholder Week */}
-                <div className="flex space-x-4">
-                   <div className="flex flex-col items-center"><span className="font-medium">M</span><span>28</span></div>
-                   <div className="flex flex-col items-center"><span className="font-medium">T</span><span>29</span></div>
-                   <div className="flex flex-col items-center"><span className="font-medium">W</span><span>30</span></div>
-                   <div className="flex flex-col items-center"><span className="font-medium">T</span><span>1</span></div>
-                   <div className="flex flex-col items-center text-primary"><span className="font-medium">F</span><span>2</span></div>
-                   <div className="flex flex-col items-center"><span className="font-medium">S</span><span>3</span></div>
-                   <div className="flex flex-col items-center"><span className="font-medium">S</span><span>4</span></div>
-                </div>
-             </div>
-              <Separator />
+      {/* Render TaskListTabs below header only for 'tasks' view */}
+      {activeView === 'tasks' && (
+         <div className="px-4 md:px-6 pt-3 sticky top-[calc(4rem+1px)] z-10 bg-background"> {/* Adjust top position based on header height */}
+            <TaskListTabs
+                lists={taskLists}
+                selectedListId={selectedListId}
+                onSelectList={handleSelectList}
+                onAddList={handleAddListClick} // Pass add list handler
+             />
          </div>
+       )}
 
+
+      <main className="flex-1 p-4 md:p-6 space-y-4">
+         {/* Removed blockquote, week view, and separator */}
 
         {/* Main content area - Render components based on activeView */}
         {activeView === 'journal' && (
@@ -92,8 +105,10 @@ export default function Home() {
              <TaskListSection
                 initialTasks={tasks}
                 initialTaskLists={taskLists}
+                selectedListId={selectedListId} // Pass selectedListId
                 onTasksChange={handleUpdateTasks}
                 onTaskListsChange={handleUpdateTaskLists}
+                onSelectListChange={handleSelectList} // Pass list selection handler if needed inside section
              />
          )}
          {activeView === 'calendar' && (
@@ -110,4 +125,3 @@ export default function Home() {
     </div>
   );
 }
-

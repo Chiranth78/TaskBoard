@@ -26,15 +26,18 @@ export default function TaskListTabs({
     : lists[0]?.id ?? ''; // Fallback to empty string if no lists
 
   return (
-     <div className="flex items-center space-x-2 border-b border-border pb-2 mb-4">
+     // Removed border-b, pb-2, mb-4. Padding/margin handled by parent container (page.tsx)
+     <div className="flex items-center space-x-2">
         <ScrollArea className="w-full whitespace-nowrap">
             <Tabs value={currentListId} onValueChange={onSelectList} className="w-max">
-                <TabsList className="bg-transparent p-0 h-auto">
+                {/* Reduced vertical padding in TabsList for tighter fit */}
+                <TabsList className="bg-transparent p-0 h-auto gap-1">
                 {lists.map((list) => (
                     <TabsTrigger
                     key={list.id}
                     value={list.id}
-                    className="text-sm px-3 py-1.5 rounded-md data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground h-auto"
+                    // Adjusted padding and text size for tabs
+                    className="text-sm px-3 py-1.5 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground hover:text-foreground h-auto transition-colors duration-150"
                     >
                     {list.name}
                     </TabsTrigger>
