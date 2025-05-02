@@ -1,34 +1,14 @@
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
-  /* config options here */
-  typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
-    ignoreBuildErrors: true, // Keep this if needed for now, but aim to fix type errors
-  },
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true, // Keep this if needed for now
-  },
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'export', // Enables static HTML export
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-       // Add other image hostnames if needed
-    ],
+    unoptimized: true, // Optional: disables image optimization which is server-dependent
   },
-  // experimental: {
-  //   // Add any experimental features if required later, e.g.,
-  //   // serverActions: true,
-  // },
+  trailingSlash: true, // Optional: ensures every route works as a standalone .html file
 };
 
-export default nextConfig;
+module.exports = nextConfig;
+
+
+
