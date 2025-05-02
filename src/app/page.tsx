@@ -9,6 +9,7 @@ import JournalSection from "@/components/journal/JournalSection";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNavigation from "@/components/layout/BottomNavigation";
 import TaskListTabs from '@/components/tasks/TaskListTabs';
+import YearCalendarView from '@/components/calendar/YearCalendarView'; // Import the new Calendar view
 import { Card, CardContent } from "@/components/ui/card";
 import {
     AlertDialog,
@@ -83,6 +84,10 @@ const mockJournalEntries: JournalEntry[] = [
       updatedAt: new Date(),
       relatedTaskIds: ['3']
   },
+    // Add more mock entries for testing consistency
+    { id: 'j3', date: '2024-07-20', contentGrid: { commitment: 'Test' }, createdAt: new Date(), updatedAt: new Date() },
+    { id: 'j4', date: '2024-07-21', contentGrid: { commitment: 'Test' }, createdAt: new Date(), updatedAt: new Date() },
+    { id: 'j5', date: '2024-06-15', contentGrid: { commitment: 'Test' }, createdAt: new Date(), updatedAt: new Date() },
   // Add an entry for today without grid data initially
   {
        id: 'j-today',
@@ -192,7 +197,7 @@ export default function Home() {
     const handleJournalClick = (journalBookId?: string, entry?: JournalEntry) => {
         // If an entry is provided, set the date to that entry's date
         // Otherwise, default to today for the new entry grid
-        const dateToEdit = entry?.date ? startOfDay(new Date(entry.date)) : startOfDay(new Date());
+        const dateToEdit = entry?.date ? startOfDay(new Date(entry.date as string)) : startOfDay(new Date());
         setSelectedJournalDate(dateToEdit);
         setJournalViewMode('edit');
     };
@@ -365,9 +370,9 @@ export default function Home() {
              />
          )}
 
-         {/* Calendar View Placeholder */}
+         {/* Calendar View */}
          {activeView === 'calendar' && (
-             <Card><CardContent className="pt-6"><p className="text-muted-foreground">Calendar view coming soon...</p></CardContent></Card>
+              <YearCalendarView journalEntries={journalEntries} />
          )}
 
          {/* Search View Placeholder */}
@@ -487,5 +492,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

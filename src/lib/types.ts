@@ -33,7 +33,7 @@ export interface JournalContentGrid {
 export interface JournalEntry {
   id: string;
   // journalBookId?: string; // Optional: Link entry to a specific JournalBook if needed
-  date: Date | string; // Date of the entry
+  date: Date | string; // Date of the entry (can be Date object or YYYY-MM-DD string)
   content?: string; // User's journal text (kept optional for backward compatibility or simple entries)
   contentGrid?: JournalContentGrid; // New structure for grid data
   relatedTaskIds?: string[]; // Link to tasks completed/worked on that day
@@ -51,7 +51,5 @@ export interface JournalBook {
 }
 
 
-// Used for consistency tracker
-export type JournalEntryDate = string; // YYYY-MM-DD format
-
-    
+// Used for consistency tracker (represents a date with a journal entry)
+export type JournalEntryDate = string; // Format: YYYY-MM-DD

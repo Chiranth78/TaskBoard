@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -29,26 +30,29 @@ const CardHeader = React.forwardRef<
 ))
 CardHeader.displayName = "CardHeader"
 
+// Adjusted CardTitle to accept HTMLHeadingElement and use h3 tag by default
 const CardTitle = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
+  HTMLHeadingElement, // Changed from HTMLDivElement
+  React.HTMLAttributes<HTMLHeadingElement> // Changed from HTMLDivElement
+>(({ className, children, ...props }, ref) => (
+  <h3 // Changed from div to h3 for semantic meaning
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-lg font-semibold leading-none tracking-tight", // Adjusted text size to lg
       className
     )}
     {...props}
-  />
+  >
+    {children}
+  </h3>
 ))
 CardTitle.displayName = "CardTitle"
 
 const CardDescription = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLParagraphElement, // Use paragraph element
+  React.HTMLAttributes<HTMLParagraphElement> // Use paragraph element
 >(({ className, ...props }, ref) => (
-  <div
+  <p // Changed from div to p
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
