@@ -1,9 +1,7 @@
-
 export interface TaskList {
   id: string;
   name: string;
-  createdAt: Date;
-  // Potentially add color or icon in the future
+  createdAt: Date | string; // Ensures consistency across backend & frontend
 }
 
 export interface Task {
@@ -11,45 +9,42 @@ export interface Task {
   listId: string; // Link to a TaskList
   title: string;
   description?: string;
-  dueDate?: Date | string; // Allow string for easier state management/form handling initially
-  priority: 'low' | 'medium' | 'high'; // Keep priority for potential sorting/filtering later
+  dueDate?: Date | string; // Accepts both for flexibility
+  priority: 'low' | 'medium' | 'high'; // Priority filtering
   completed: boolean;
-  isStarred?: boolean; // For marking important tasks
-  createdAt: Date;
-  updatedAt: Date; // Added update timestamp
-  // gridPosition is no longer needed for list view
-  // gridPosition?: { row: number; col: number }; // For grid layout
-  category?: string; // Optional category
+  isStarred?: boolean; // Star important tasks
+  createdAt: Date | string; // For SSR/JSON compatibility
+  updatedAt: Date | string; // Same here
+  category?: string;
 }
 
-// Structure for the new journal editor grid layout
+// Grid layout structure for journal
 export interface JournalContentGrid {
-    commitment?: string;
-    gratitude?: string;
-    mustDo?: string;
-    improvement?: string;
+  commitment?: string;
+  gratitude?: string;
+  mustDo?: string;
+  improvement?: string;
 }
 
 export interface JournalEntry {
   id: string;
-  // journalBookId?: string; // Optional: Link entry to a specific JournalBook if needed
-  date: Date | string; // Date of the entry (can be Date object or YYYY-MM-DD string)
-  content?: string; // User's journal text (kept optional for backward compatibility or simple entries)
-  contentGrid?: JournalContentGrid; // New structure for grid data
-  relatedTaskIds?: string[]; // Link to tasks completed/worked on that day
-  createdAt: Date;
-  updatedAt: Date;
+  date: Date | string; // Entry date (can be stringified for storage)
+  content?: string; // Optional rich-text
+  contentGrid?: JournalContentGrid; // Grid fields
+  relatedTaskIds?: string[]; // Tasks completed on this day
+  createdAt: Date | string; // Match with frontend/backend usage
+  updatedAt: Date | string;
 }
 
-// Interface for Journal "Books"
+// Journal “book” structure
 export interface JournalBook {
-    id: string;
-    title: string;
-    imageUrl: string; // URL or potentially data URI for the cover image
-    createdAt?: Date; // Optional: When the book was created
-    updatedAt?: Date; // Optional: Last updated timestamp
+  id: string;
+  title: string;
+  imageUrl: string; // Could be hosted or base64
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
-
-// Used for consistency tracker (represents a date with a journal entry)
+// Used to track days with entries (calendar view, etc.)
 export type JournalEntryDate = string; // Format: YYYY-MM-DD
+
