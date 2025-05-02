@@ -3,7 +3,7 @@
 
 import type { Task, TaskList } from '@/lib/types';
 import { useState, useEffect, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 import { Input } from '@/components/ui/input'; // For adding new task inline
 import { Plus, ListChecks, MoreVertical, ArrowUpDown } from 'lucide-react'; // Icons
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -218,15 +218,18 @@ export default function TaskListSection({
         const listIdToDelete = listToDelete.id;
         const listName = listToDelete.name;
 
-        // Delete the list
-        setTaskLists(prev => prev.filter(l => l.id !== listIdToDelete));
+        // Filter out the list to delete _before_ updating state
+        const remainingLists = taskLists.filter(l => l.id !== listIdToDelete);
+
+        // Update the list state
+        setTaskLists(remainingLists);
 
         // Delete associated tasks
         setTasks(prev => prev.filter(t => t.listId !== listIdToDelete));
 
         // If the deleted list was selected, select the first available list or null
         if (selectedListId === listIdToDelete) {
-            setSelectedListId(taskLists.length > 1 ? taskLists.filter(l => l.id !== listIdToDelete)[0]?.id : null);
+           setSelectedListId(remainingLists.length > 0 ? remainingLists[0].id : null);
         }
 
         toast({ title: "List Deleted", description: `"${listName}" and all its tasks were deleted.`, variant: "destructive" });
@@ -288,15 +291,15 @@ export default function TaskListSection({
                              <ArrowUpDown className="mr-2 h-4 w-4" /> Rename list
                          </DropdownMenuItem>
                          {/* Add Delete option */}
-                         <AlertDialogTrigger asChild>
+                          <AlertDialogTrigger asChild>
                              <DropdownMenuItem
-                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                 onSelect={(e) => e.preventDefault()} // Prevent auto close
-                                 onClick={() => handleDeleteListClick(selectedList)}
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                onSelect={(e) => e.preventDefault()} // Prevent auto close before confirmation
+                                // No onClick needed here, trigger handles it
                              >
-                                 Delete list
+                                Delete list
                              </DropdownMenuItem>
-                          </AlertDialogTrigger>
+                         </AlertDialogTrigger>
                      </DropdownMenuContent>
                  </DropdownMenu>
              </div>
@@ -367,6 +370,8 @@ export default function TaskListSection({
             onClose={() => { setIsEditDialogOpen(false); setEditingTask(null); }}
             onSave={handleSaveTask}
             task={editingTask}
+            availableLists={taskLists} // Pass available lists
+            currentListId={selectedListId} // Pass current list id
         />
 
         {/* Add List Dialog (using AlertDialog for simplicity) */}
@@ -393,8 +398,11 @@ export default function TaskListSection({
             </AlertDialogContent>
         </AlertDialog>
 
-         {/* Confirm Delete List Dialog */}
-         <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
+         {/* Confirm Delete List Dialog - Attached to the trigger inside DropdownMenu */}
+          <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
+             {/* <AlertDialogTrigger asChild>
+                // Trigger is now part of the DropdownMenuItem above
+             </AlertDialogTrigger> */}
              <AlertDialogContent>
                  <AlertDialogHeader>
                  <AlertDialogTitle>Delete List "{listToDelete?.name}"?</AlertDialogTitle>
@@ -404,6 +412,7 @@ export default function TaskListSection({
                  </AlertDialogHeader>
                  <AlertDialogFooter>
                  <AlertDialogCancel onClick={() => setListToDelete(null)}>Cancel</AlertDialogCancel>
+                 {/* Apply destructive variant styling */}
                  <AlertDialogAction onClick={confirmDeleteList} className={buttonVariants({ variant: "destructive" })}>Delete</AlertDialogAction>
                  </AlertDialogFooter>
              </AlertDialogContent>
