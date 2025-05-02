@@ -101,6 +101,9 @@ export default function Home() {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [isAddListDialogOpen, setIsAddListDialogOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
+  // State for Add Journal Dialog
+  const [isAddJournalDialogOpen, setIsAddJournalDialogOpen] = useState(false);
+  const [newJournalName, setNewJournalName] = useState('');
   // State for the currently selected date in the journal editor
   const [selectedJournalDate, setSelectedJournalDate] = useState<Date>(startOfDay(new Date()));
   // State to control Journal view (list or editor)
@@ -185,6 +188,28 @@ export default function Home() {
         // setSelectedJournalDate(startOfDay(new Date()));
     };
 
+    // Handler to open the Add Journal dialog
+    const handleAddJournalClick = () => {
+        setNewJournalName('');
+        setIsAddJournalDialogOpen(true);
+    };
+
+    // Handler to save the new journal (Placeholder - currently only shows a toast)
+    const handleSaveNewJournal = () => {
+        if (!newJournalName.trim()) {
+            toast({ title: "Error", description: "Journal name cannot be empty.", variant: "destructive" });
+            return;
+        }
+        // In a real app, you would create a new journal 'book' here
+        // and update the state holding the list of journals.
+        // For now, just show a toast and close the dialog.
+        toast({ title: "Journal Added", description: `Journal "${newJournalName.trim()}" created (simulation).` });
+        setIsAddJournalDialogOpen(false);
+        // Example:
+        // const newJournal = { id: `journal-book-${Date.now()}`, title: newJournalName.trim(), imageUrl: '...' };
+        // setJournalBooks([...journalBooks, newJournal]);
+    };
+
   return (
     <div className="flex flex-col h-screen"> {/* Use h-screen for full height */}
       <AppHeader journalEntries={journalEntries} />
@@ -218,6 +243,7 @@ export default function Home() {
                         <JournalList
                             entries={journalEntries}
                             onJournalClick={handleJournalClick} // Pass handler to navigate to editor
+                            onAddJournal={handleAddJournalClick} // Pass handler to add journal
                         />
                      </div>
                 )}
@@ -262,7 +288,7 @@ export default function Home() {
         <AlertDialog open={isAddListDialogOpen} onOpenChange={setIsAddListDialogOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                <AlertDialogTitle>Create New List</AlertDialogTitle>
+                <AlertDialogTitle>Create New Task List</AlertDialogTitle>
                 <AlertDialogDescription>
                     Enter a name for your new task list.
                 </AlertDialogDescription>
@@ -281,6 +307,29 @@ export default function Home() {
             </AlertDialogContent>
         </AlertDialog>
 
+         {/* Add Journal Dialog */}
+        <AlertDialog open={isAddJournalDialogOpen} onOpenChange={setIsAddJournalDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Create New Journal</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Enter a name for your new journal book.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <Input
+                    placeholder="Journal Name"
+                    value={newJournalName}
+                    onChange={(e) => setNewJournalName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveNewJournal()}
+                    className="my-4"
+                />
+                <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSaveNewJournal}>Create</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
 
       {/* Sticky Bottom Navigation */}
       {/* Ensure Bottom Navigation doesn't overlap content */}
@@ -290,5 +339,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

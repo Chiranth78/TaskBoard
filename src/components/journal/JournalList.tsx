@@ -4,12 +4,13 @@
 import type { JournalEntry } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { MoreHorizontal } from 'lucide-react';
+import { Plus } from 'lucide-react'; // Import Plus icon
 import Image from 'next/image';
 
 interface JournalListProps {
   entries: JournalEntry[];
   onJournalClick: (entry?: JournalEntry) => void; // Pass entry to edit or undefined for new
+  onAddJournal: () => void; // Add prop for adding a new journal
 }
 
 // Mock journal data for the list view (replace with actual data logic)
@@ -18,7 +19,7 @@ const mockJournals = [
     // Add more journals if needed
 ];
 
-export default function JournalList({ entries, onJournalClick }: JournalListProps) {
+export default function JournalList({ entries, onJournalClick, onAddJournal }: JournalListProps) {
 
   // In a real app, you'd filter or fetch specific journal 'books' here.
   // For now, we just display one card representing the main journal.
@@ -28,9 +29,10 @@ export default function JournalList({ entries, onJournalClick }: JournalListProp
     <div className="mt-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-foreground">Journals</h2>
-        <Button variant="ghost" size="icon" className="text-muted-foreground">
-          <MoreHorizontal className="h-5 w-5" />
-           <span className="sr-only">Journal Options</span>
+        {/* Changed button to Plus icon and linked to onAddJournal */}
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={onAddJournal}>
+          <Plus className="h-5 w-5" />
+           <span className="sr-only">Add New Journal</span>
         </Button>
       </div>
 
