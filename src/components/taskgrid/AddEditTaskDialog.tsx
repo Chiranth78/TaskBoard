@@ -114,11 +114,12 @@ export default function AddEditTaskDialog({
     } else {
       // If adding, just send the new data
       // The parent component will add id, createdAt, completed, etc.
-      onSave({
-           ...taskData,
-           // Ensure dueDate is ISO string or undefined already handled above
-        } as Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completed'>); // Adjust type assertion
-    }
+     onSave({
+  ...taskData,
+  completed: false, // or true, or whatever default you expect
+  updatedAt: new Date().toISOString(), // or undefined if allowed
+} as Omit<Task, 'id' | 'createdAt'>);
+
     onClose(); // Close the dialog after saving
   };
 
