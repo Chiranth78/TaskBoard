@@ -1,8 +1,8 @@
 
 "use client";
 
-import type { Task, TaskList, JournalEntry } from '@/lib/types';
-import { useState, useEffect } from 'react';
+import type { Task, TaskList, JournalEntry, JournalBook } from '@/lib/types';
+import { useState, useEffect, useRef } from 'react';
 import { startOfDay } from 'date-fns';
 import TaskListSection from "@/components/tasks/TaskListSection";
 import JournalSection from "@/components/journal/JournalSection";
@@ -21,6 +21,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label"; // Import Label
+import { Button } from "@/components/ui/button"; // Import Button
 import { useToast } from "@/hooks/use-toast";
 import Greeting from '@/components/journal/Greeting';
 import QuoteBlock from '@/components/journal/QuoteBlock';
@@ -92,6 +94,12 @@ const mockJournalEntries: JournalEntry[] = [
    }
 ];
 
+// Mock journal book data
+const initialJournalBooks: JournalBook[] = [
+    { id: 'default-journal', title: 'My Journal', imageUrl: 'https://picsum.photos/200/150' },
+    // Add more journals if needed
+];
+
 
 export default function Home() {
   const [activeView, setActiveView] = useState<'journal' | 'tasks' | 'calendar' | 'search'>('journal'); // Default to journal view
@@ -109,6 +117,14 @@ export default function Home() {
   // State to control Journal view (list or editor)
   const [journalViewMode, setJournalViewMode] = useState<'list' | 'edit'>('list'); // Default to list view
   const { toast } = useToast();
+
+  // State for Journal Books
+  const [journalBooks, setJournalBooks] = useState<JournalBook[]>(initialJournalBooks);
+  const [editingJournalBook, setEditingJournalBook] = useState<JournalBook | null>(null);
+  const [isEditJournalTitleDialogOpen, setIsEditJournalTitleDialogOpen] = useState(false);
+  const [editedJournalTitle, setEditedJournalTitle] = useState('');
+  const [isChangeJournalImageDialogOpen, setIsChangeJournalImageDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
 
   useEffect(() => {
       // Set default selected list for Tasks view
@@ -173,7 +189,7 @@ export default function Home() {
     };
 
     // Handler to switch to Journal Editor view (e.g., when clicking a journal book)
-    const handleJournalClick = (entry?: JournalEntry) => {
+    const handleJournalClick = (journalBookId?: string, entry?: JournalEntry) => {
         // If an entry is provided, set the date to that entry's date
         // Otherwise, default to today for the new entry grid
         const dateToEdit = entry?.date ? startOfDay(new Date(entry.date)) : startOfDay(new Date());
@@ -194,21 +210,96 @@ export default function Home() {
         setIsAddJournalDialogOpen(true);
     };
 
-    // Handler to save the new journal (Placeholder - currently only shows a toast)
+    // Handler to save the new journal book
     const handleSaveNewJournal = () => {
         if (!newJournalName.trim()) {
             toast({ title: "Error", description: "Journal name cannot be empty.", variant: "destructive" });
             return;
         }
-        // In a real app, you would create a new journal 'book' here
-        // and update the state holding the list of journals.
-        // For now, just show a toast and close the dialog.
-        toast({ title: "Journal Added", description: `Journal "${newJournalName.trim()}" created (simulation).` });
+        const newJournalBook: JournalBook = {
+             id: `journal-book-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+             title: newJournalName.trim(),
+             imageUrl: `https://picsum.photos/seed/${Date.now()}/200/150` // Default image
+        };
+        setJournalBooks([...journalBooks, newJournalBook]);
+        toast({ title: "Journal Added", description: `Journal "${newJournalBook.title}" created.` });
         setIsAddJournalDialogOpen(false);
-        // Example:
-        // const newJournal = { id: `journal-book-${Date.now()}`, title: newJournalName.trim(), imageUrl: '...' };
-        // setJournalBooks([...journalBooks, newJournal]);
     };
+
+    // --- Journal Book Edit Handlers ---
+
+    const handleEditJournalTitle = (journalBook: JournalBook) => {
+        setEditingJournalBook(journalBook);
+        setEditedJournalTitle(journalBook.title);
+        setIsEditJournalTitleDialogOpen(true);
+    };
+
+    const handleSaveJournalTitle = () => {
+        if (!editingJournalBook || !editedJournalTitle.trim()) {
+            toast({ title: "Error", description: "Journal title cannot be empty.", variant: "destructive" });
+            return;
+        }
+        setJournalBooks(prevBooks =>
+            prevBooks.map(book =>
+                book.id === editingJournalBook.id
+                    ? { ...book, title: editedJournalTitle.trim() }
+                    : book
+            )
+        );
+        toast({ title: "Journal Title Updated", description: `Journal renamed to "${editedJournalTitle.trim()}".` });
+        setIsEditJournalTitleDialogOpen(false);
+        setEditingJournalBook(null);
+    };
+
+    const handleChangeJournalImage = (journalBook: JournalBook) => {
+        setEditingJournalBook(journalBook);
+        setIsChangeJournalImageDialogOpen(true);
+        // Trigger file input click programmatically
+        // Use timeout to ensure dialog is rendered before clicking input
+        setTimeout(() => {
+            fileInputRef.current?.click();
+        }, 100);
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file && editingJournalBook) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const newImageUrl = reader.result as string;
+                setJournalBooks(prevBooks =>
+                    prevBooks.map(book =>
+                        book.id === editingJournalBook.id
+                            ? { ...book, imageUrl: newImageUrl }
+                            : book
+                    )
+                );
+                toast({ title: "Journal Image Updated", description: `Cover image for "${editingJournalBook.title}" changed.` });
+                setIsChangeJournalImageDialogOpen(false);
+                setEditingJournalBook(null);
+            };
+            reader.readAsDataURL(file); // Read file as Data URL
+        } else {
+             // Handle case where no file selected or dialog closed
+             setIsChangeJournalImageDialogOpen(false);
+             setEditingJournalBook(null);
+        }
+         // Reset file input value to allow re-selecting the same file
+         if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+         }
+    };
+
+    // Cancel handler for Change Image Dialog
+    const handleCancelChangeImage = () => {
+        setIsChangeJournalImageDialogOpen(false);
+        setEditingJournalBook(null);
+        // Reset file input value if dialog is cancelled
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
 
   return (
     <div className="flex flex-col h-screen"> {/* Use h-screen for full height */}
@@ -241,9 +332,11 @@ export default function Home() {
                         <WeekCalendar selectedDate={selectedJournalDate} onDateSelect={handleJournalDateChange} />
                         <Separator />
                         <JournalList
-                            entries={journalEntries}
+                            journalBooks={journalBooks} // Pass journal books
                             onJournalClick={handleJournalClick} // Pass handler to navigate to editor
                             onAddJournal={handleAddJournalClick} // Pass handler to add journal
+                            onEditTitle={handleEditJournalTitle} // Pass edit title handler
+                            onChangeImage={handleChangeJournalImage} // Pass change image handler
                         />
                      </div>
                 )}
@@ -330,6 +423,61 @@ export default function Home() {
             </AlertDialogContent>
         </AlertDialog>
 
+         {/* Edit Journal Title Dialog */}
+        <AlertDialog open={isEditJournalTitleDialogOpen} onOpenChange={setIsEditJournalTitleDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Edit Journal Title</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Enter a new title for "{editingJournalBook?.title}".
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <Input
+                    placeholder="New Journal Title"
+                    value={editedJournalTitle}
+                    onChange={(e) => setEditedJournalTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveJournalTitle()}
+                    className="my-4"
+                />
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setEditingJournalBook(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSaveJournalTitle}>Save Title</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+         {/* Change Journal Image Dialog (Hidden Input) */}
+         {/* This dialog might not be strictly necessary visually if the file input is triggered directly */}
+         {/* Keeping it simple: just a hidden input triggered by the JournalList button */}
+         <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*" // Accept only image files
+            className="hidden" // Keep the input hidden
+         />
+        {/* Optional: A dialog to show a "loading" or "select file" message if desired */}
+        <AlertDialog open={isChangeJournalImageDialogOpen} onOpenChange={setIsChangeJournalImageDialogOpen}>
+             <AlertDialogContent>
+                 <AlertDialogHeader>
+                 <AlertDialogTitle>Change Journal Cover</AlertDialogTitle>
+                 <AlertDialogDescription>
+                    Select a new image file for "{editingJournalBook?.title}".
+                    {/* The actual file input is hidden and triggered programmatically */}
+                 </AlertDialogDescription>
+                 </AlertDialogHeader>
+                 {/* Can add a visual representation or loading spinner here */}
+                 <div className="my-4 text-center text-muted-foreground">
+                    Opening file selector...
+                 </div>
+                 <AlertDialogFooter>
+                     {/* The Cancel button is important if the user closes the file selector without choosing a file */}
+                    <AlertDialogCancel onClick={handleCancelChangeImage}>Cancel</AlertDialogCancel>
+                 </AlertDialogFooter>
+             </AlertDialogContent>
+         </AlertDialog>
+
+
 
       {/* Sticky Bottom Navigation */}
       {/* Ensure Bottom Navigation doesn't overlap content */}
@@ -339,3 +487,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

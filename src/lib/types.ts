@@ -32,6 +32,7 @@ export interface JournalContentGrid {
 
 export interface JournalEntry {
   id: string;
+  // journalBookId?: string; // Optional: Link entry to a specific JournalBook if needed
   date: Date | string; // Date of the entry
   content?: string; // User's journal text (kept optional for backward compatibility or simple entries)
   contentGrid?: JournalContentGrid; // New structure for grid data
@@ -40,6 +41,17 @@ export interface JournalEntry {
   updatedAt: Date;
 }
 
+// Interface for Journal "Books"
+export interface JournalBook {
+    id: string;
+    title: string;
+    imageUrl: string; // URL or potentially data URI for the cover image
+    createdAt?: Date; // Optional: When the book was created
+    updatedAt?: Date; // Optional: Last updated timestamp
+}
+
+
 // Used for consistency tracker
 export type JournalEntryDate = string; // YYYY-MM-DD format
 
+    
