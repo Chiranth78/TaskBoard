@@ -3,7 +3,7 @@
 
 import type { Task, TaskList } from '@/lib/types';
 import { useState, useEffect, useMemo } from 'react';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; // Imported buttonVariants
 import { Input } from '@/components/ui/input';
 import { Plus, ListChecks, MoreVertical, ArrowUpDown, Trash2 } from 'lucide-react'; // Added Trash2
 // Removed TaskListTabs import
@@ -90,6 +90,9 @@ export default function TaskListSection({
   }, [taskLists, selectedListId]);
 
   const { completedTasks, incompleteTasks } = useMemo(() => {
+    if (!selectedListId) {
+        return { completedTasks: [], incompleteTasks: [] }; // Return empty arrays if no list selected
+    }
     const filteredTasks = tasks.filter(task => task.listId === selectedListId);
     return {
       completedTasks: filteredTasks.filter(task => task.completed).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), // Sort completed by updated date desc
@@ -182,6 +185,23 @@ export default function TaskListSection({
              // TODO: API call to update task
         } else {
              console.warn("handleSaveTask called without a task ID. Use handleAddTask for new tasks.");
+             // Handle adding a new task if needed, though it's currently done via handleAddTask
+             // This path shouldn't normally be hit with current AddEditTaskDialog logic
+             const newTask: Task = {
+                 id: `task-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                 listId: selectedListId!, // Assuming selectedListId is non-null
+                 title: taskData.title,
+                 description: taskData.description,
+                 dueDate: taskData.dueDate,
+                 priority: taskData.priority,
+                 isStarred: taskData.isStarred,
+                 completed: false, // New tasks are incomplete
+                 createdAt: new Date(),
+                 updatedAt: new Date(),
+             };
+            setTasks(prevTasks => [...prevTasks, newTask]);
+            toast({ title: "Task Added", description: `"${newTask.title}" added to ${selectedList?.name}.` });
+            // TODO: API call to create task
         }
        setIsEditDialogOpen(false);
        setEditingTask(null);
@@ -205,7 +225,9 @@ export default function TaskListSection({
             name: newListName.trim(),
             createdAt: new Date(),
         };
-        setTaskLists(prev => [...prev, newList]);
+        const updatedLists = [...taskLists, newList];
+        setTaskLists(updatedLists); // Update local state first
+        // onTaskListsChange(updatedLists); // Notify parent immediately - Handled by useEffect
         onSelectListChange(newList.id); // Notify parent to select the newly added list
         setIsAddListDialogOpen(false);
         toast({ title: "List Created", description: `"${newList.name}" added.` });
@@ -214,7 +236,7 @@ export default function TaskListSection({
 
     const handleDeleteListClick = (list: TaskList) => {
         setListToDelete(list);
-        setIsConfirmDeleteDialogOpen(true);
+        setIsConfirmDeleteDialogOpen(true); // This state change should open the dialog
     }
 
     const confirmDeleteList = () => {
@@ -225,12 +247,11 @@ export default function TaskListSection({
 
         // Filter out the list to delete _before_ updating state
         const remainingLists = taskLists.filter(l => l.id !== listIdToDelete);
+        const remainingTasks = tasks.filter(t => t.listId !== listIdToDelete);
 
-        // Update the list state (triggers parent update via useEffect)
+        // Update the local state (triggers parent update via useEffect)
         setTaskLists(remainingLists);
-
-        // Delete associated tasks (triggers parent update via useEffect)
-        setTasks(prev => prev.filter(t => t.listId !== listIdToDelete));
+        setTasks(remainingTasks);
 
         // If the deleted list was selected, notify parent to select the first available list or null
         if (selectedListId === listIdToDelete) {
@@ -249,7 +270,7 @@ export default function TaskListSection({
     return (
       <div className="space-y-4">
         {/* Removed Skeleton for tabs */}
-        <Card>
+        <Card className="border-none shadow-none bg-card">
           <CardHeader className="p-4 border-b border-border">
              <div className="flex justify-between items-center">
                 <Skeleton className="h-6 w-1/2" />
@@ -269,152 +290,170 @@ export default function TaskListSection({
   }
 
   return (
-    <div className="space-y-4">
-       {/* TaskListTabs are now rendered in page.tsx */}
+     // Wrap the relevant section in AlertDialog to provide context
+     <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
+        <div className="space-y-4">
+        {/* TaskListTabs are now rendered in page.tsx */}
 
-      {/* Main Task Area */}
-      {selectedListId && selectedList ? (
-        <Card className="border-none shadow-none bg-card">
-          <CardHeader className="p-4 border-b border-border">
-             <div className="flex justify-between items-center">
-                <CardTitle className="text-lg font-semibold">{selectedList.name}</CardTitle>
-                 {/* List Options Dropdown */}
-                 <DropdownMenu>
-                     <DropdownMenuTrigger asChild>
-                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                             <MoreVertical className="h-4 w-4" />
-                         </Button>
-                     </DropdownMenuTrigger>
-                     <DropdownMenuContent align="end">
-                         <DropdownMenuItem onClick={() => alert('Rename list functionality coming soon!')}>
-                             <ArrowUpDown className="mr-2 h-4 w-4" /> Rename list
-                         </DropdownMenuItem>
-                         <DropdownMenuSeparator />
-                          {/* Use AlertDialogTrigger within DropdownMenuItem for delete confirmation */}
-                         <AlertDialogTrigger asChild>
-                            <DropdownMenuItem
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                onSelect={(e) => {
-                                    e.preventDefault(); // Prevent default closing
-                                    handleDeleteListClick(selectedList); // Trigger confirmation dialog
-                                }}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete list
+        {/* Main Task Area */}
+        {selectedListId && selectedList ? (
+            <Card className="border-none shadow-none bg-card">
+            <CardHeader className="p-4 border-b border-border">
+                <div className="flex justify-between items-center">
+                    <CardTitle className="text-lg font-semibold">{selectedList.name}</CardTitle>
+                    {/* List Options Dropdown */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => alert('Rename list functionality coming soon!')}>
+                                <ArrowUpDown className="mr-2 h-4 w-4" /> Rename list
                             </DropdownMenuItem>
-                         </AlertDialogTrigger>
-                     </DropdownMenuContent>
-                 </DropdownMenu>
-             </div>
-          </CardHeader>
-          <CardContent className="p-4 space-y-2">
-             {/* Incomplete Tasks */}
-            <div className="space-y-1">
-                {incompleteTasks.map((task) => (
-                    <TaskItem
-                    key={task.id}
-                    task={task}
+                            <DropdownMenuSeparator />
+                            {/* The AlertDialogTrigger now wraps the DropdownMenuItem */}
+                            {/* The onSelect handler sets state to open the dialog */}
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                    onSelect={(e) => {
+                                        e.preventDefault(); // Prevent dropdown from closing immediately
+                                        handleDeleteListClick(selectedList); // Set state needed for the dialog
+                                    }}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete list
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </CardHeader>
+            <CardContent className="p-4 space-y-2">
+                {/* Incomplete Tasks */}
+                <div className="space-y-1">
+                    {incompleteTasks.map((task) => (
+                        <TaskItem
+                        key={task.id}
+                        task={task}
+                        onToggleComplete={handleToggleComplete}
+                        onToggleStar={handleToggleStar}
+                        onEdit={handleEditTask} // Pass edit handler
+                        onDelete={handleDeleteTask} // Pass delete handler
+                        />
+                    ))}
+                </div>
+
+                {/* Input for adding new task */}
+                <div className="flex items-center space-x-2 pt-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" disabled> {/* Placeholder icon */}
+                    <Plus className="h-4 w-4" />
+                </Button>
+                <Input
+                    type="text"
+                    placeholder="Add a task"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                    className="h-9 flex-1 bg-transparent border-none focus:ring-0 focus:outline-none placeholder:text-muted-foreground text-sm px-0"
+                />
+                {/* Hidden submit button for form semantics if needed, or rely on Enter key */}
+                <Button onClick={handleAddTask} size="sm" className={!newTaskTitle.trim() ? 'invisible' : 'visible'}>Add</Button>
+                </div>
+
+
+                {/* Completed Tasks Accordion */}
+                <CompletedTasksAccordion
+                    tasks={completedTasks}
                     onToggleComplete={handleToggleComplete}
                     onToggleStar={handleToggleStar}
-                     onEdit={handleEditTask} // Pass edit handler
+                    onEdit={handleEditTask} // Pass edit handler
                     onDelete={handleDeleteTask} // Pass delete handler
-                    />
-                ))}
-             </div>
+                />
 
-            {/* Input for adding new task */}
-            <div className="flex items-center space-x-2 pt-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" disabled> {/* Placeholder icon */}
-                <Plus className="h-4 w-4" />
-              </Button>
-              <Input
-                type="text"
-                placeholder="Add a task"
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                 onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                className="h-9 flex-1 bg-transparent border-none focus:ring-0 focus:outline-none placeholder:text-muted-foreground text-sm px-0"
-              />
-               {/* Hidden submit button for form semantics if needed, or rely on Enter key */}
-               <Button onClick={handleAddTask} size="sm" className={!newTaskTitle.trim() ? 'invisible' : 'visible'}>Add</Button>
-            </div>
+            </CardContent>
+            </Card>
+        ) : (
+            // Placeholder when no list is selected or no lists exist
+            <Card className="border-none shadow-none bg-card">
+            <CardContent className="pt-10 flex flex-col items-center justify-center text-center min-h-[200px]"> {/* Added min-height */}
+                <ListChecks className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">
+                    {taskLists.length > 0 ? "Select a list to view tasks" : "No task lists yet."}
+                </p>
+                {/* Consider adding a button here to trigger the 'New list' action in TaskListTabs */}
+                 {taskLists.length === 0 && (
+                      <Button onClick={() => document.querySelector<HTMLButtonElement>('button:has(svg.lucide-plus)')?.click()} size="sm">
+                          <Plus className="mr-2 h-4 w-4" /> Create Your First List
+                      </Button>
+                  )}
 
-
-            {/* Completed Tasks Accordion */}
-            <CompletedTasksAccordion
-                tasks={completedTasks}
-                onToggleComplete={handleToggleComplete}
-                onToggleStar={handleToggleStar}
-                 onEdit={handleEditTask} // Pass edit handler
-                onDelete={handleDeleteTask} // Pass delete handler
-             />
-
-          </CardContent>
-        </Card>
-      ) : (
-         // Placeholder when no list is selected or no lists exist
-        <Card className="border-none shadow-none bg-card">
-          <CardContent className="pt-10 flex flex-col items-center justify-center text-center">
-            <ListChecks className="h-12 w-12 text-muted-foreground mb-4" />
-             <p className="text-muted-foreground">
-                 {taskLists.length > 0 ? "Select a list to view tasks" : "No task lists available."}
-             </p>
-             {/* Button to add list - Trigger dialog managed by parent now */}
-             {/* Consider adding a way to trigger the parent's add list dialog here if needed */}
-              {/* <Button onClick={handleAddListClick} size="sm" className="mt-4">
-                 <Plus className="mr-2 h-4 w-4" /> Create New List
-              </Button> */}
-          </CardContent>
-        </Card>
-      )}
-
-       {/* Edit Task Dialog */}
-        <AddEditTaskDialog
-            isOpen={isEditDialogOpen}
-            onClose={() => { setIsEditDialogOpen(false); setEditingTask(null); }}
-            onSave={handleSaveTask}
-            task={editingTask}
-            availableLists={taskLists} // Pass available lists
-            currentListId={selectedListId} // Pass current list id
-        />
-
-        {/* Add List Dialog (Now triggered by parent, but definition stays here or moves to parent) */}
-        {/* If keeping state here, it won't open unless triggered locally */}
-        {/* It's better practice to move this dialog logic entirely to the parent (page.tsx) */}
-        {/*
-        <AlertDialog open={isAddListDialogOpen} onOpenChange={setIsAddListDialogOpen}>
-             // ... Content ...
-        </AlertDialog>
-        */}
-
-
-         {/* Confirm Delete List Dialog */}
-          <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
-             <AlertDialogContent>
-                 <AlertDialogHeader>
-                 <AlertDialogTitle>Delete List "{listToDelete?.name}"?</AlertDialogTitle>
-                 <AlertDialogDescription>
-                     This action cannot be undone. This will permanently delete the list and all associated tasks.
-                 </AlertDialogDescription>
-                 </AlertDialogHeader>
-                 <AlertDialogFooter>
-                 <AlertDialogCancel onClick={() => setListToDelete(null)}>Cancel</AlertDialogCancel>
-                 <AlertDialogAction onClick={confirmDeleteList} className={buttonVariants({ variant: "destructive" })}>Delete</AlertDialogAction>
-                 </AlertDialogFooter>
-             </AlertDialogContent>
-         </AlertDialog>
-
-
-         {/* Floating Add Button */}
-        {selectedListId && (
-             <Button
-                onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Add a task"]')?.focus()} // Focus input on click
-                size="lg"
-                className="fixed bottom-20 right-4 z-30 rounded-full shadow-lg h-14 w-14 p-0"
-                aria-label="Add New Task"
-             >
-                <Plus className="h-6 w-6" />
-             </Button>
+            </CardContent>
+            </Card>
         )}
-    </div>
+
+        {/* Edit Task Dialog */}
+            <AddEditTaskDialog
+                isOpen={isEditDialogOpen}
+                onClose={() => { setIsEditDialogOpen(false); setEditingTask(null); }}
+                onSave={handleSaveTask}
+                task={editingTask}
+                availableLists={taskLists} // Pass available lists
+                currentListId={selectedListId} // Pass current list id
+            />
+
+            {/* Add List Dialog (Simplified - maybe move to parent later) */}
+            <AlertDialog open={isAddListDialogOpen} onOpenChange={setIsAddListDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Create New List</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Enter a name for your new task list.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Input
+                        placeholder="List Name"
+                        value={newListName}
+                        onChange={(e) => setNewListName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveNewList()}
+                        className="my-4" // Add margin
+                    />
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleSaveNewList}>Create</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+
+            {/* Confirm Delete List Dialog Content (Triggered externally by state) */}
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Delete List "{listToDelete?.name}"?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the list and all associated tasks.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setListToDelete(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDeleteList} className={buttonVariants({ variant: "destructive" })}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+
+
+            {/* Floating Add Button */}
+            {selectedListId && (
+                <Button
+                    onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Add a task"]')?.focus()} // Focus input on click
+                    size="lg"
+                    className="fixed bottom-20 right-4 z-30 rounded-full shadow-lg h-14 w-14 p-0"
+                    aria-label="Add New Task"
+                >
+                    <Plus className="h-6 w-6" />
+                </Button>
+            )}
+        </div>
+      </AlertDialog> // Close the main AlertDialog wrapper
   );
 }
