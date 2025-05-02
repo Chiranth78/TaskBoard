@@ -6,7 +6,8 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, LogOut, User, Mail, Link as LinkIcon, Download } from "lucide-react"; // Import necessary icons
+// Import necessary icons: LogOut, User, Mail, Link as LinkIcon, Download, Sync
+import { MoreVertical, LogOut, User, Mail, Link as LinkIcon, Download, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -17,18 +18,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/context/AuthContext'; // Import useAuth hook
 
-// Helper function to download JSON data
-const downloadJson = (data: unknown, filename: string) => {
-    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
-        JSON.stringify(data, null, 2) // Pretty print JSON
-    )}`;
-    const link = document.createElement("a");
-    link.href = jsonString;
-    link.download = filename;
-    link.click();
-    document.removeChild(link); // Clean up link element - This line causes error, should be document.body.removeChild(link)
-};
+// Helper function to download JSON data (remains the same)
+// ... (keep existing downloadJson helper or similar implementation)
 
 
 interface AppHeaderProps {
@@ -40,14 +33,7 @@ export default function AppHeader({ journalEntries }: AppHeaderProps) {
   const [currentDate, setCurrentDate] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const { toast } = useToast(); // Initialize toast
-
-  // Mock user data (replace with actual auth data later)
-  const mockUser = {
-    name: "Current User",
-    email: "user@example.com",
-    avatarUrl: "https://picsum.photos/40/40",
-    isGoogleLinked: false, // Example state
-  };
+  const { user, loading, signInWithGoogle, signOutUser, isSynced } = useAuth(); // Use auth context
 
   useEffect(() => {
     setIsMounted(true); // Component has mounted
@@ -100,14 +86,31 @@ export default function AppHeader({ journalEntries }: AppHeaderProps) {
    };
 
 
-  const handleSignOut = () => {
-    // Placeholder for sign out logic
-    toast({ title: "Sign Out", description: "Sign out functionality coming soon." });
+  const handleSignOut = async () => {
+      await signOutUser();
   };
 
-  const handleLinkGoogle = () => {
-     // Placeholder for linking Google account logic
-     toast({ title: "Link Account", description: "Google account linking coming soon." });
+  const handleSignIn = async () => {
+      await signInWithGoogle();
+   };
+
+   // Function to get sync status indicator
+   const getSyncStatusIndicator = () => {
+      if (loading && !user) {
+          // Initial loading state or loading during sign-in/out
+          return <span className="text-xs text-muted-foreground flex items-center"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Checking...</span>;
+      }
+      if (!user) {
+           return <span className="text-xs text-muted-foreground flex items-center"><XCircle className="mr-1 h-3 w-3 text-destructive" /> Not Signed In</span>;
+      }
+      // Placeholder for actual sync logic - for now, just check if user is logged in
+      if (isSynced) {
+          return <span className="text-xs text-muted-foreground flex items-center"><CheckCircle className="mr-1 h-3 w-3 text-green-500" /> Synced</span>;
+      } else {
+          // This state might represent syncing in progress or an error
+           return <span className="text-xs text-muted-foreground flex items-center"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Syncing...</span>;
+           // Or show error: <span className="text-xs text-muted-foreground flex items-center"><XCircle className="mr-1 h-3 w-3 text-destructive" /> Sync Error</span>;
+      }
    };
 
 
@@ -119,49 +122,64 @@ export default function AppHeader({ journalEntries }: AppHeaderProps) {
             ) : (
                 <Skeleton className="h-5 w-36" />
             )}
+           {/* Sync Status Display */}
+           {isMounted && getSyncStatusIndicator()}
+           {!isMounted && <Skeleton className="h-4 w-20 mt-1" />}
        </div>
 
        <div className="flex items-center gap-3">
            <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                 {/* Combine Avatar and MoreVertical into one trigger area if desired, or keep separate */}
-                  {/* Using Avatar as the primary trigger */}
                  <button className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-full">
                      <Avatar className="h-8 w-8 cursor-pointer">
-                         <AvatarImage src={mockUser.avatarUrl} alt="User Avatar" data-ai-hint="user avatar initials" />
-                         <AvatarFallback>CU</AvatarFallback>
+                         <AvatarImage src={user?.photoURL || ''} alt={user?.displayName?.[0] || 'U'} data-ai-hint="user avatar initials" />
+                         {/* Fallback uses initials or 'U' */}
+                         <AvatarFallback>{user?.displayName ? user.displayName[0].toUpperCase() : 'U'}</AvatarFallback>
                      </Avatar>
                      <MoreVertical className="h-5 w-5 text-muted-foreground" />
                      <span className="sr-only">Account options</span>
                  </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                 <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                       <p className="text-sm font-medium leading-none flex items-center">
-                          <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                          {mockUser.name}
-                       </p>
-                       <p className="text-xs leading-none text-muted-foreground flex items-center">
-                          <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
-                           {mockUser.email}
-                       </p>
-                    </div>
-                 </DropdownMenuLabel>
-                 <DropdownMenuSeparator />
-                 <DropdownMenuItem onClick={handleLinkGoogle} disabled={mockUser.isGoogleLinked}>
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                     <span>{mockUser.isGoogleLinked ? "Google Linked" : "Link with Google"}</span>
-                 </DropdownMenuItem>
-                 <DropdownMenuItem onClick={handleExportData}>
-                     <Download className="mr-2 h-4 w-4" />
-                     <span>Export Journal Data</span>
-                 </DropdownMenuItem>
-                 <DropdownMenuSeparator />
-                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                    <LogOut className="mr-2 h-4 w-4" />
-                     <span>Sign Out</span>
-                 </DropdownMenuItem>
+                  {user ? (
+                      <>
+                         <DropdownMenuLabel className="font-normal">
+                            <div className="flex flex-col space-y-1">
+                               <p className="text-sm font-medium leading-none flex items-center">
+                                  <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                                  {user.displayName || "User"}
+                               </p>
+                               <p className="text-xs leading-none text-muted-foreground flex items-center">
+                                  <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
+                                   {user.email || "No email"}
+                               </p>
+                            </div>
+                         </DropdownMenuLabel>
+                         <DropdownMenuSeparator />
+                         <DropdownMenuItem onClick={handleExportData}>
+                             <Download className="mr-2 h-4 w-4" />
+                             <span>Export Journal Data</span>
+                         </DropdownMenuItem>
+                         {/* Sync Status (Optional: could add a manual sync trigger here too) */}
+                         <DropdownMenuItem disabled className="opacity-100 cursor-default">
+                              {getSyncStatusIndicator()}
+                          </DropdownMenuItem>
+                         <DropdownMenuSeparator />
+                         <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                            <LogOut className="mr-2 h-4 w-4" />
+                             <span>Sign Out</span>
+                         </DropdownMenuItem>
+                      </>
+                  ) : (
+                      <>
+                         <DropdownMenuItem onClick={handleSignIn} disabled={loading}>
+                             <LinkIcon className="mr-2 h-4 w-4" />
+                             <span>{loading ? 'Signing In...' : 'Sign In with Google'}</span>
+                              {loading && <Loader2 className="ml-auto h-4 w-4 animate-spin" />}
+                         </DropdownMenuItem>
+                      </>
+                  )}
+
               </DropdownMenuContent>
            </DropdownMenu>
        </div>

@@ -4,6 +4,7 @@ import { GeistSans } from 'geist/font/sans';
 // Removed GeistMono import as it was causing errors
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"; // Import Toaster
+import { AuthProvider } from '@/context/AuthContext'; // Import AuthProvider
 
 export const metadata: Metadata = {
   title: 'TaskGrid', // Updated App Name
@@ -19,8 +20,10 @@ export default function RootLayout({
     // Apply dark theme by default, Geist Sans font, and ensure full height layout
     <html lang="en" className="dark h-full">
       <body className={`${GeistSans.variable} font-sans antialiased flex flex-col h-full`}>
-        {children}
-        <Toaster /> {/* Add Toaster component here */}
+        <AuthProvider> {/* Wrap children with AuthProvider */}
+          {children}
+          <Toaster /> {/* Add Toaster component here */}
+        </AuthProvider>
       </body>
     </html>
   );
