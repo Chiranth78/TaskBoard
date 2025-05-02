@@ -3,11 +3,11 @@
 
 import type { Task, TaskList, JournalEntry } from '@/lib/types';
 import { useState, useEffect } from 'react';
-import TaskListSection from "@/components/tasks/TaskListSection"; // Import task list component
-import JournalSection from "@/components/journal/JournalSection";
+import TaskListSection from "@/components/tasks/TaskListSection";
+import JournalSection from "@/components/journal/JournalSection"; // Keep for editing
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNavigation from "@/components/layout/BottomNavigation";
-import TaskListTabs from '@/components/tasks/TaskListTabs'; // Import tabs component
+import TaskListTabs from '@/components/tasks/TaskListTabs';
 import { Card, CardContent } from "@/components/ui/card";
 import {
     AlertDialog,
@@ -18,11 +18,14 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogTrigger,
-  } from "@/components/ui/alert-dialog"; // Import AlertDialog components
-import { Input } from "@/components/ui/input"; // Import Input for Add List Dialog
-import { useToast } from "@/hooks/use-toast"; // Import useToast
-
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import Greeting from '@/components/journal/Greeting'; // Import Greeting
+import QuoteBlock from '@/components/journal/QuoteBlock'; // Import QuoteBlock
+import WeekCalendar from '@/components/journal/WeekCalendar'; // Import WeekCalendar
+import JournalList from '@/components/journal/JournalList'; // Import JournalList
+import { Separator } from '@/components/ui/separator'; // Import Separator
 
 // Mock data - replace with actual data fetching
 const mockTaskLists: TaskList[] = [
@@ -52,51 +55,63 @@ const mockJournalEntries: JournalEntry[] = [
   { id: 'j2', date: '2024-07-28', content: 'Completed the project documentation draft.', createdAt: new Date(), updatedAt: new Date(), relatedTaskIds: ['3'] },
 ];
 
+// Mock data for the journal list view
+const mockJournalsList = [
+    { id: 'my-journal-1', name: 'My journal', imageUrl: 'https://picsum.photos/300/200?random=1', dataAiHint: 'journal cover abstract' },
+    // Add more journals if needed
+];
+
 export default function Home() {
-  const [activeView, setActiveView] = useState<'journal' | 'tasks' | 'calendar' | 'search'>('tasks'); // Default to tasks view
+  const [activeView, setActiveView] = useState<'journal' | 'tasks' | 'calendar' | 'search'>('tasks');
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [taskLists, setTaskLists] = useState<TaskList[]>(mockTaskLists);
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(mockJournalEntries); // Add state for journal entries
-  const [selectedListId, setSelectedListId] = useState<string | null>(null); // Initialize to null
-  const [isAddListDialogOpen, setIsAddListDialogOpen] = useState(false); // Add list dialog state moved here
-  const [newListName, setNewListName] = useState(''); // New list name state moved here
-  const { toast } = useToast(); // Initialize toast
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(mockJournalEntries);
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [isAddListDialogOpen, setIsAddListDialogOpen] = useState(false);
+  const [newListName, setNewListName] = useState('');
+  // State to track if we are viewing the journal list or the entry editor
+  const [journalViewMode, setJournalViewMode] = useState<'list' | 'edit'>('list');
+  const { toast } = useToast();
 
-  // Effect to set the initial selected list ID once lists are loaded
   useEffect(() => {
       if (taskLists.length > 0 && selectedListId === null) {
           setSelectedListId(taskLists[0].id);
       }
-      // If all lists are deleted, set selectedListId to null
       else if (taskLists.length === 0) {
           setSelectedListId(null);
       }
-  }, [taskLists, selectedListId]); // Re-run when taskLists change or selectedListId is still null
+  }, [taskLists, selectedListId]);
+
+  // Reset journal view mode when switching main activeView
+  useEffect(() => {
+    if (activeView !== 'journal') {
+        setJournalViewMode('list');
+    } else {
+        setJournalViewMode('list'); // Default to list when entering journal view
+    }
+  }, [activeView]);
 
 
-  // Handlers to update state (to be passed down)
   const handleUpdateTasks = (updatedTasks: Task[]) => {
     setTasks(updatedTasks);
-    // TODO: Persist changes
   };
 
   const handleUpdateTaskLists = (updatedTaskLists: TaskList[]) => {
     setTaskLists(updatedTaskLists);
-    // TODO: Persist changes
   }
 
   const handleUpdateJournalEntries = (updatedEntries: JournalEntry[]) => {
     setJournalEntries(updatedEntries);
-    // TODO: Persist changes
+     // Optionally switch back to list view after saving an entry
+     // setJournalViewMode('list');
   }
 
-  const handleSelectList = (listId: string | null) => { // Allow null
+  const handleSelectList = (listId: string | null) => {
       setSelectedListId(listId);
   }
 
-   // Handlers for Add List Dialog moved from TaskListSection
    const handleAddListClick = () => {
-        setNewListName(''); // Reset name field
+        setNewListName('');
         setIsAddListDialogOpen(true);
    };
 
@@ -111,66 +126,87 @@ export default function Home() {
             createdAt: new Date(),
         };
         const updatedLists = [...taskLists, newList];
-        setTaskLists(updatedLists); // Update state here
-        setSelectedListId(newList.id); // Select the newly added list
+        setTaskLists(updatedLists);
+        setSelectedListId(newList.id);
         setIsAddListDialogOpen(false);
         toast({ title: "List Created", description: `"${newList.name}" added.` });
-        // TODO: API call to create list
     };
 
-   // Note: handleDeleteListClick, confirmDeleteList handlers remain in TaskListSection
-   // as they are triggered from within that component's dropdown.
+    // Handler to switch to the journal entry editor view
+    const handleViewJournalEntry = () => {
+        setJournalViewMode('edit');
+    };
 
 
   return (
     <div className="flex min-h-screen flex-col">
-      <AppHeader journalEntries={journalEntries} /> {/* Pass journal entries to header */}
+      <AppHeader journalEntries={journalEntries} />
 
-      {/* Render TaskListTabs below header only for 'tasks' view */}
       {activeView === 'tasks' && (
-         <div className="px-4 md:px-6 pt-3 sticky top-[calc(4rem)] z-10 bg-background border-b border-border pb-3"> {/* Adjust top position & add border */}
+         <div className="px-4 md:px-6 pt-3 sticky top-[calc(4rem)] z-10 bg-background border-b border-border pb-3">
             <TaskListTabs
                 lists={taskLists}
                 selectedListId={selectedListId}
                 onSelectList={handleSelectList}
-                onAddList={handleAddListClick} // Pass add list handler
+                onAddList={handleAddListClick}
              />
          </div>
        )}
 
 
       <main className="flex-1 p-4 md:p-6 space-y-4">
-         {/* Removed blockquote, week view, and separator */}
 
-        {/* Main content area - Render components based on activeView */}
+        {/* Journal View */}
         {activeView === 'journal' && (
-             <JournalSection
-                initialEntries={journalEntries}
-                tasks={tasks}
-                onEntriesChange={handleUpdateJournalEntries} // Pass update handler
-            />
-         )}
+            <>
+                {journalViewMode === 'list' ? (
+                    // Display the Journal List layout (Greeting, Quote, Calendar, List)
+                    <div className="space-y-6">
+                        <Greeting />
+                        <QuoteBlock
+                            quote="One way to get the most out of life is to look upon it as an adventure."
+                            author="William Feather"
+                        />
+                        <WeekCalendar />
+                        <Separator className="my-4" />
+                        <JournalList journals={mockJournalsList} onViewJournal={handleViewJournalEntry} />
+                    </div>
+                ) : (
+                    // Display the Journal Entry Editor
+                    <JournalSection
+                        initialEntries={journalEntries}
+                        tasks={tasks}
+                        onEntriesChange={handleUpdateJournalEntries}
+                    />
+                )}
+            </>
+        )}
+
+         {/* Tasks View */}
          {activeView === 'tasks' && (
-            // No need to wrap TaskListSection in AlertDialog here anymore
              <TaskListSection
                 initialTasks={tasks}
                 initialTaskLists={taskLists}
-                selectedListId={selectedListId} // Pass selectedListId
+                selectedListId={selectedListId}
                 onTasksChange={handleUpdateTasks}
                 onTaskListsChange={handleUpdateTaskLists}
-                onSelectListChange={handleSelectList} // Pass list selection handler
+                onSelectListChange={handleSelectList}
              />
          )}
+
+         {/* Calendar View Placeholder */}
          {activeView === 'calendar' && (
              <Card><CardContent className="pt-6"><p className="text-muted-foreground">Calendar view coming soon...</p></CardContent></Card>
          )}
+
+         {/* Search View Placeholder */}
         {activeView === 'search' && (
              <Card><CardContent className="pt-6"><p className="text-muted-foreground">Search functionality coming soon...</p></CardContent></Card>
          )}
 
       </main>
 
-        {/* Add List Dialog (Managed by this page component) */}
+        {/* Add List Dialog */}
         <AlertDialog open={isAddListDialogOpen} onOpenChange={setIsAddListDialogOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -184,7 +220,7 @@ export default function Home() {
                     value={newListName}
                     onChange={(e) => setNewListName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSaveNewList()}
-                    className="my-4" // Add margin
+                    className="my-4"
                 />
                 <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -199,3 +235,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
