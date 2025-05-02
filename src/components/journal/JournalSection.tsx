@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { format, parseISO, startOfDay } from 'date-fns';
 import { Save, ArrowLeft, ArrowRight } from 'lucide-react'; // Added arrows
 import { useToast } from "@/hooks/use-toast"; // Import useToast
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 
 interface JournalSectionProps {
   initialEntries: JournalEntry[];
