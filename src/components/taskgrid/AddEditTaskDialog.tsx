@@ -93,21 +93,20 @@ export default function AddEditTaskDialog({
       description: description.trim(),
       dueDate: dueDate ? dueDate.toISOString() : undefined,
       priority,
-      listId: listId,
-      isStarred: isStarred,
+      listId,
+      isStarred,
+      updatedAt: new Date().toISOString(), // 🔧 fixed here
     };
 
     if (task) {
       onSave({
         ...task,
         ...taskData,
-        updatedAt: new Date(),
       });
     } else {
       onSave({
         ...taskData,
         completed: false,
-       updatedAt: new Date(),
       } as Omit<Task, 'id' | 'createdAt'>);
       onClose();
     }
@@ -222,4 +221,5 @@ export default function AddEditTaskDialog({
     </Dialog>
   );
 }
+
 
