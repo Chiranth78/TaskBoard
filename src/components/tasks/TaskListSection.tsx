@@ -1,0 +1,426 @@
+
+"use client";
+
+import type { Task, TaskList } from '@/lib/types';
+import { useState, useEffect, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input'; // For adding new task inline
+import { Plus, ListChecks, MoreVertical, ArrowUpDown } from 'lucide-react'; // Icons
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import TaskListTabs from './TaskListTabs';
+import TaskItem from './TaskItem';
+import CompletedTasksAccordion from './CompletedTasksAccordion';
+import AddEditTaskDialog from '../taskgrid/AddEditTaskDialog'; // Reuse dialog for editing
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"; // For list options
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog" // For delete confirmation
+
+
+interface TaskListSectionProps {
+  initialTasks: Task[];
+  initialTaskLists: TaskList[];
+  onTasksChange: (tasks: Task[]) => void; // Callback to update parent state
+  onTaskListsChange: (lists: TaskList[]) => void; // Callback to update parent state
+}
+
+export default function TaskListSection({
+  initialTasks,
+  initialTaskLists,
+  onTasksChange,
+  onTaskListsChange
+}: TaskListSectionProps) {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [taskLists, setTaskLists] = useState<TaskList[]>(initialTaskLists);
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [isMounted, setIsMounted] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+   const [isAddListDialogOpen, setIsAddListDialogOpen] = useState(false); // State for adding list
+   const [newListName, setNewListName] = useState(''); // State for new list name
+   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
+   const [listToDelete, setListToDelete] = useState<TaskList | null>(null);
+
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setIsMounted(true);
+    // Select the first list by default if none is selected and lists exist
+    if (!selectedListId && initialTaskLists.length > 0) {
+      setSelectedListId(initialTaskLists[0].id);
+    }
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTaskLists]); // Depend only on initial lists
+
+
+   useEffect(() => {
+       // Callbacks to notify parent about state changes
+       onTasksChange(tasks);
+       onTaskListsChange(taskLists);
+       // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [tasks, taskLists]);
+
+
+  const selectedList = useMemo(() => {
+    return taskLists.find(list => list.id === selectedListId);
+  }, [taskLists, selectedListId]);
+
+  const { completedTasks, incompleteTasks } = useMemo(() => {
+    const filteredTasks = tasks.filter(task => task.listId === selectedListId);
+    return {
+      completedTasks: filteredTasks.filter(task => task.completed).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()), // Sort completed by updated date desc
+      incompleteTasks: filteredTasks.filter(task => !task.completed).sort((a,b) => (a.isStarred === b.isStarred)? 0 : a.isStarred? -1 : 1) // Sort incomplete, starred first
+    };
+  }, [tasks, selectedListId]);
+
+
+  const handleSelectList = (listId: string) => {
+    setSelectedListId(listId);
+  };
+
+  const handleAddTask = () => {
+    if (!newTaskTitle.trim() || !selectedListId) return;
+
+    const newTask: Task = {
+      id: `task-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      listId: selectedListId,
+      title: newTaskTitle.trim(),
+      priority: 'medium', // Default priority
+      completed: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    setTasks(prevTasks => [...prevTasks, newTask]);
+    setNewTaskTitle(''); // Clear input field
+     toast({ title: "Task Added", description: `"${newTask.title}" added to ${selectedList?.name}.` });
+    // TODO: API call to create task
+  };
+
+  const handleToggleComplete = (taskId: string) => {
+    let taskTitle = '';
+    let isComplete = false;
+    setTasks(prevTasks =>
+      prevTasks.map(task => {
+        if (task.id === taskId) {
+           taskTitle = task.title;
+           isComplete = !task.completed;
+          return { ...task, completed: !task.completed, updatedAt: new Date() };
+        }
+        return task;
+      })
+    );
+     toast({ title: "Task Updated", description: `"${taskTitle}" marked as ${isComplete ? 'complete' : 'incomplete'}.` });
+    // TODO: API call to update task
+  };
+
+  const handleToggleStar = (taskId: string) => {
+     let taskTitle = '';
+     let isStarred = false;
+     setTasks(prevTasks =>
+        prevTasks.map(task => {
+        if (task.id === taskId) {
+            taskTitle = task.title;
+            isStarred = !task.isStarred;
+            return { ...task, isStarred: !task.isStarred, updatedAt: new Date() };
+        }
+        return task;
+        })
+    );
+     toast({ title: "Task Updated", description: `"${taskTitle}" ${isStarred ? 'starred' : 'unstarred'}.` });
+     // TODO: API call to update task
+  };
+
+   // --- Edit/Delete Task Handlers ---
+   const handleEditTask = (task: Task) => {
+       setEditingTask(task);
+       setIsEditDialogOpen(true);
+   };
+
+   const handleDeleteTask = (taskId: string) => {
+       const taskToDelete = tasks.find(t => t.id === taskId);
+       if(taskToDelete){
+           setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
+           toast({ title: "Task Deleted", description: `"${taskToDelete.title}" removed.`, variant: "destructive" });
+           // TODO: API call to delete task
+       }
+   };
+
+   const handleSaveTask = (taskData: Omit<Task, 'id' | 'createdAt'> | Task) => {
+        if ('id' in taskData && taskData.id) {
+             // Editing existing task - Ensure listId is included
+            const updatedTask = {
+                ...tasks.find(t => t.id === taskData.id), // Get original task data
+                ...taskData, // Apply changes from form
+                listId: taskData.listId || selectedListId!, // Ensure listId is set
+                updatedAt: new Date()
+            } as Task; // Type assertion
+
+            setTasks(prevTasks => prevTasks.map(t => (t.id === updatedTask.id ? updatedTask : t)));
+            toast({ title: "Task Updated", description: `"${updatedTask.title}" saved.` });
+             // TODO: API call to update task
+        } else {
+            // This case should ideally not happen from the TaskItem edit flow
+            // but is here for completeness. Adding new tasks is handled by handleAddTask.
+             console.warn("handleSaveTask called without a task ID. Use handleAddTask for new tasks.");
+        }
+       setIsEditDialogOpen(false);
+       setEditingTask(null);
+   };
+
+
+    // --- Add/Delete List Handlers ---
+    const handleAddListClick = () => {
+        setNewListName(''); // Reset name field
+        setIsAddListDialogOpen(true);
+    };
+
+    const handleSaveNewList = () => {
+        if (!newListName.trim()) {
+            toast({ title: "Error", description: "List name cannot be empty.", variant: "destructive" });
+            return;
+        }
+        const newList: TaskList = {
+            id: `list-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            name: newListName.trim(),
+            createdAt: new Date(),
+        };
+        setTaskLists(prev => [...prev, newList]);
+        setSelectedListId(newList.id); // Select the newly added list
+        setIsAddListDialogOpen(false);
+        toast({ title: "List Created", description: `"${newList.name}" added.` });
+        // TODO: API call to create list
+    };
+
+    const handleDeleteListClick = (list: TaskList) => {
+        setListToDelete(list);
+        setIsConfirmDeleteDialogOpen(true);
+    }
+
+    const confirmDeleteList = () => {
+        if (!listToDelete) return;
+
+        const listIdToDelete = listToDelete.id;
+        const listName = listToDelete.name;
+
+        // Delete the list
+        setTaskLists(prev => prev.filter(l => l.id !== listIdToDelete));
+
+        // Delete associated tasks
+        setTasks(prev => prev.filter(t => t.listId !== listIdToDelete));
+
+        // If the deleted list was selected, select the first available list or null
+        if (selectedListId === listIdToDelete) {
+            setSelectedListId(taskLists.length > 1 ? taskLists.filter(l => l.id !== listIdToDelete)[0]?.id : null);
+        }
+
+        toast({ title: "List Deleted", description: `"${listName}" and all its tasks were deleted.`, variant: "destructive" });
+        setIsConfirmDeleteDialogOpen(false);
+        setListToDelete(null);
+        // TODO: API calls to delete list and its tasks
+    }
+
+
+  if (!isMounted) {
+    // Skeleton loader for the task list section
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-3/4 mb-4" /> {/* Placeholder for tabs */}
+        <Card>
+          <CardHeader className="p-4 border-b border-border">
+             <div className="flex justify-between items-center">
+                <Skeleton className="h-6 w-1/2" />
+                 <Skeleton className="h-8 w-8" />
+             </div>
+          </CardHeader>
+          <CardContent className="p-4 space-y-3">
+            <Skeleton className="h-10 w-full" /> {/* Add task input */}
+             <Skeleton className="h-8 w-full" />
+             <Skeleton className="h-8 w-full" />
+             <Skeleton className="h-8 w-full" />
+             <Skeleton className="h-8 w-3/4 mt-4" /> {/* Completed accordion */}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+       {/* Tabs for Task Lists */}
+       <TaskListTabs
+          lists={taskLists}
+          selectedListId={selectedListId}
+          onSelectList={handleSelectList}
+          onAddList={handleAddListClick}
+       />
+
+      {/* Main Task Area */}
+      {selectedListId && selectedList ? (
+        <Card className="border-none shadow-none bg-card">
+          <CardHeader className="p-4 border-b border-border">
+             <div className="flex justify-between items-center">
+                <CardTitle className="text-lg font-semibold">{selectedList.name}</CardTitle>
+                 {/* List Options Dropdown */}
+                 <DropdownMenu>
+                     <DropdownMenuTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                             <MoreVertical className="h-4 w-4" />
+                         </Button>
+                     </DropdownMenuTrigger>
+                     <DropdownMenuContent align="end">
+                         <DropdownMenuItem onClick={() => alert('Rename list functionality coming soon!')}>
+                             <ArrowUpDown className="mr-2 h-4 w-4" /> Rename list
+                         </DropdownMenuItem>
+                         {/* Add Delete option */}
+                         <AlertDialogTrigger asChild>
+                             <DropdownMenuItem
+                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                 onSelect={(e) => e.preventDefault()} // Prevent auto close
+                                 onClick={() => handleDeleteListClick(selectedList)}
+                             >
+                                 Delete list
+                             </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                     </DropdownMenuContent>
+                 </DropdownMenu>
+             </div>
+
+          </CardHeader>
+          <CardContent className="p-4 space-y-2">
+             {/* Incomplete Tasks */}
+            <div className="space-y-1">
+                {incompleteTasks.map((task) => (
+                    <TaskItem
+                    key={task.id}
+                    task={task}
+                    onToggleComplete={handleToggleComplete}
+                    onToggleStar={handleToggleStar}
+                     onEdit={handleEditTask} // Pass edit handler
+                    onDelete={handleDeleteTask} // Pass delete handler
+                    />
+                ))}
+             </div>
+
+            {/* Input for adding new task */}
+            <div className="flex items-center space-x-2 pt-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" disabled> {/* Placeholder icon */}
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Input
+                type="text"
+                placeholder="Add a task"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                 onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                className="h-9 flex-1 bg-transparent border-none focus:ring-0 focus:outline-none placeholder:text-muted-foreground text-sm px-0"
+              />
+               {/* Hidden submit button for form semantics if needed, or rely on Enter key */}
+               <Button onClick={handleAddTask} size="sm" className={!newTaskTitle.trim() ? 'invisible' : 'visible'}>Add</Button>
+            </div>
+
+
+            {/* Completed Tasks Accordion */}
+            <CompletedTasksAccordion
+                tasks={completedTasks}
+                onToggleComplete={handleToggleComplete}
+                onToggleStar={handleToggleStar}
+                 onEdit={handleEditTask} // Pass edit handler
+                onDelete={handleDeleteTask} // Pass delete handler
+             />
+
+          </CardContent>
+        </Card>
+      ) : (
+         // Placeholder when no list is selected or no lists exist
+        <Card className="border-none shadow-none bg-card">
+          <CardContent className="pt-10 flex flex-col items-center justify-center text-center">
+            <ListChecks className="h-12 w-12 text-muted-foreground mb-4" />
+             <p className="text-muted-foreground">
+                 {taskLists.length > 0 ? "Select a list to view tasks" : "No task lists available."}
+             </p>
+             <Button onClick={handleAddListClick} size="sm" className="mt-4">
+                <Plus className="mr-2 h-4 w-4" /> Create New List
+             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+       {/* Edit Task Dialog */}
+        <AddEditTaskDialog
+            isOpen={isEditDialogOpen}
+            onClose={() => { setIsEditDialogOpen(false); setEditingTask(null); }}
+            onSave={handleSaveTask}
+            task={editingTask}
+        />
+
+        {/* Add List Dialog (using AlertDialog for simplicity) */}
+        <AlertDialog open={isAddListDialogOpen} onOpenChange={setIsAddListDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Create New Task List</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Enter a name for your new list.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <Input
+                    placeholder="List name"
+                    value={newListName}
+                    onChange={(e) => setNewListName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveNewList()}
+                    className="my-4"
+                    autoFocus
+                 />
+                <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSaveNewList}>Create</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+         {/* Confirm Delete List Dialog */}
+         <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
+             <AlertDialogContent>
+                 <AlertDialogHeader>
+                 <AlertDialogTitle>Delete List "{listToDelete?.name}"?</AlertDialogTitle>
+                 <AlertDialogDescription>
+                     This action cannot be undone. This will permanently delete the list and all associated tasks.
+                 </AlertDialogDescription>
+                 </AlertDialogHeader>
+                 <AlertDialogFooter>
+                 <AlertDialogCancel onClick={() => setListToDelete(null)}>Cancel</AlertDialogCancel>
+                 <AlertDialogAction onClick={confirmDeleteList} className={buttonVariants({ variant: "destructive" })}>Delete</AlertDialogAction>
+                 </AlertDialogFooter>
+             </AlertDialogContent>
+         </AlertDialog>
+
+
+         {/* Floating Add Button (Consistent with Task Grid) */}
+        {selectedListId && (
+             <Button
+                onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Add a task"]')?.focus()} // Focus input on click
+                size="lg" // Larger button
+                className="fixed bottom-20 right-4 z-30 rounded-full shadow-lg h-14 w-14 p-0" // Position bottom right, above nav
+                aria-label="Add New Task"
+             >
+                <Plus className="h-6 w-6" />
+             </Button>
+        )}
+    </div>
+  );
+}
