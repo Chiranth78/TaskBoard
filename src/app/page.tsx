@@ -228,8 +228,7 @@ export default function Home() {
                         onEntriesChange={handleUpdateJournalEntries}
                         selectedDate={selectedJournalDate}
                         onDateChange={handleJournalDateChange}
-                        // Add a way to go back to the list view, maybe a prop or button inside JournalSection
-                        // onBackToList={resetJournalView}
+                        onBackToList={resetJournalView} // Pass the function to go back
                      />
                  )}
             </>
@@ -291,3 +290,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

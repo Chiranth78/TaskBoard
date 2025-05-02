@@ -15,6 +15,7 @@ interface JournalSectionProps {
   // Add props to control editor state from parent (page.tsx)
   selectedDate: Date;
   onDateChange: (date: Date) => void;
+  onBackToList: () => void; // Add prop to handle going back
 }
 
 export default function JournalSection({
@@ -23,6 +24,7 @@ export default function JournalSection({
     onEntriesChange,
     selectedDate, // Receive selected date from parent
     onDateChange, // Receive date change handler from parent
+    onBackToList, // Receive back handler from parent
 }: JournalSectionProps) {
   const [entries, setEntries] = useState<JournalEntry[]>(initialEntries);
   // State to hold the structured data for the current entry's grid
@@ -145,7 +147,7 @@ export default function JournalSection({
 
   if (!isMounted) {
     // Use the skeleton from JournalEditorGrid for consistency
-    return <JournalEditorGrid selectedDate={selectedDate} initialData={undefined} onSave={()=>{}} onPreviousDay={()=>{}} onNextDay={()=>{}} />;
+    return <JournalEditorGrid selectedDate={selectedDate} initialData={undefined} onSave={()=>{}} onPreviousDay={()=>{}} onNextDay={()=>{}} onBack={()=>{}} />;
   }
 
   // Render the JournalEditorGrid component
@@ -157,8 +159,11 @@ export default function JournalSection({
           onSave={handleSaveEntry}
           onPreviousDay={handlePreviousDay}
           onNextDay={handleNextDay}
+          onBack={onBackToList} // Pass the back handler to the grid editor
           isSaving={isSaving} // Pass saving state
         />
      </div>
   );
 }
+
+    

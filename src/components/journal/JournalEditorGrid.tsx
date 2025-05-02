@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
-import { Save, ChevronLeft, ChevronRight, Sun, Smile, Tag } from 'lucide-react';
+import { Save, ChevronLeft, ChevronRight, Sun, Smile, Tag, ArrowLeft } from 'lucide-react'; // Added ArrowLeft
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface JournalEditorGridProps {
@@ -15,6 +15,7 @@ interface JournalEditorGridProps {
   onSave: (data: JournalContentGrid) => void;
   onPreviousDay: () => void;
   onNextDay: () => void;
+  onBack: () => void; // Add onBack prop
   isSaving?: boolean; // Optional saving indicator
 }
 
@@ -24,21 +25,31 @@ export default function JournalEditorGrid({
   onSave,
   onPreviousDay,
   onNextDay,
+  onBack, // Destructure onBack
   isSaving = false,
 }: JournalEditorGridProps) {
-  const [commitment, setCommitment] = useState('');
-  const [gratitude, setGratitude] = useState('');
-  const [mustDo, setMustDo] = useState('');
-  const [improvement, setImprovement] = useState('');
+  // Define default label texts
+  const defaultCommitmentLabel = "Today, I commit to:\n\n...";
+  const defaultGratitudeLabel = "Today, I am grateful for:\n\n...";
+  const defaultMustDoLabel = "Three things I must do today:\n\n1. ...\n2. ...\n3. ...";
+  const defaultImprovementLabel = "How could I have made today better?\n\n...";
+
+  // Initialize state with label text or existing data
+  const [commitment, setCommitment] = useState(initialData?.commitment || defaultCommitmentLabel);
+  const [gratitude, setGratitude] = useState(initialData?.gratitude || defaultGratitudeLabel);
+  const [mustDo, setMustDo] = useState(initialData?.mustDo || defaultMustDoLabel);
+  const [improvement, setImprovement] = useState(initialData?.improvement || defaultImprovementLabel);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
     // Load initial data when component mounts or initialData changes
-    setCommitment(initialData?.commitment || '');
-    setGratitude(initialData?.gratitude || '');
-    setMustDo(initialData?.mustDo || '');
-    setImprovement(initialData?.improvement || '');
+    // Reset to default labels if initialData is cleared or not provided for the date
+    setCommitment(initialData?.commitment || defaultCommitmentLabel);
+    setGratitude(initialData?.gratitude || defaultGratitudeLabel);
+    setMustDo(initialData?.mustDo || defaultMustDoLabel);
+    setImprovement(initialData?.improvement || defaultImprovementLabel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
 
   const handleSaveClick = () => {
@@ -57,11 +68,14 @@ export default function JournalEditorGrid({
       <div className="flex flex-col h-full space-y-4 p-1">
           {/* Header Skeleton */}
            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-end gap-2">
-                    <Skeleton className="h-10 w-8" />
-                    <div className="flex flex-col gap-1">
-                        <Skeleton className="h-4 w-16" />
-                        <Skeleton className="h-4 w-20" />
+                <div className="flex items-center gap-2"> {/* Added Back button placeholder */}
+                    <Skeleton className="h-8 w-8" />
+                    <div className="flex items-end gap-2">
+                        <Skeleton className="h-10 w-8" />
+                        <div className="flex flex-col gap-1">
+                            <Skeleton className="h-4 w-16" />
+                            <Skeleton className="h-4 w-20" />
+                        </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -91,13 +105,20 @@ export default function JournalEditorGrid({
     <div className="flex flex-col h-full space-y-4 p-1"> {/* Reduced padding */}
       {/* Header */}
       <div className="flex items-center justify-between mb-2"> {/* Reduced bottom margin */}
-        {/* Date Display */}
-        <div className="flex items-end gap-2">
-          <span className="text-4xl font-bold text-foreground">{format(selectedDate, 'd')}</span>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-medium text-muted-foreground">{format(selectedDate, 'EEEE')}</span>
-            <span className="text-sm text-muted-foreground">{format(selectedDate, 'MMMM yyyy')}</span>
-          </div>
+         <div className="flex items-center gap-2">
+             {/* Back Button */}
+             <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                 <ArrowLeft className="h-5 w-5" />
+                 <span className="sr-only">Back to Journal List</span>
+             </Button>
+            {/* Date Display */}
+            <div className="flex items-end gap-2">
+              <span className="text-4xl font-bold text-foreground">{format(selectedDate, 'd')}</span>
+              <div className="flex flex-col leading-tight">
+                <span className="text-sm font-medium text-muted-foreground">{format(selectedDate, 'EEEE')}</span>
+                <span className="text-sm text-muted-foreground">{format(selectedDate, 'MMMM yyyy')}</span>
+              </div>
+            </div>
         </div>
 
         {/* Icons & Navigation */}
@@ -143,50 +164,52 @@ export default function JournalEditorGrid({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-px flex-grow bg-border overflow-hidden rounded-md"> {/* Use gap-px and bg-border for lines */}
         {/* Top Left */}
         <div className="bg-background p-3 md:p-4 flex flex-col">
-          <label htmlFor="commitment" className="text-sm font-medium text-muted-foreground mb-2">Today, I commit to:</label>
+          {/* Label removed, content is now inside Textarea */}
           <Textarea
             id="commitment"
-            placeholder="..."
+            // Placeholder removed, using state value which includes the label
             value={commitment}
             onChange={(e) => setCommitment(e.target.value)}
-            className="flex-grow resize-none border-none focus:ring-0 bg-transparent p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="flex-grow resize-none border-none focus:ring-0 bg-transparent p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground focus:text-foreground" // Adjust text color
+             rows={10} // Increase rows to accommodate label + content
           />
         </div>
         {/* Top Right */}
         <div className="bg-background p-3 md:p-4 flex flex-col">
-          <label htmlFor="gratitude" className="text-sm font-medium text-muted-foreground mb-2">Today, I am grateful for:</label>
+           {/* Label removed */}
           <Textarea
             id="gratitude"
-            placeholder="..."
             value={gratitude}
             onChange={(e) => setGratitude(e.target.value)}
-            className="flex-grow resize-none border-none focus:ring-0 bg-transparent p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
+             className="flex-grow resize-none border-none focus:ring-0 bg-transparent p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground focus:text-foreground"
+             rows={10}
           />
         </div>
         {/* Bottom Left */}
         <div className="bg-background p-3 md:p-4 flex flex-col">
-          <label htmlFor="mustDo" className="text-sm font-medium text-muted-foreground mb-2">Three things I must do today:</label>
+          {/* Label removed */}
           <Textarea
             id="mustDo"
-             placeholder="1. ...&#10;2. ...&#10;3. ..." // Use HTML entity for newline in placeholder
             value={mustDo}
             onChange={(e) => setMustDo(e.target.value)}
-            className="flex-grow resize-none border-none focus:ring-0 bg-transparent p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
-            rows={5} // Give slightly more initial space
+             className="flex-grow resize-none border-none focus:ring-0 bg-transparent p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground focus:text-foreground"
+            rows={10} // Give slightly more initial space
           />
         </div>
         {/* Bottom Right */}
         <div className="bg-background p-3 md:p-4 flex flex-col">
-          <label htmlFor="improvement" className="text-sm font-medium text-muted-foreground mb-2">How could I have made today better?</label>
+          {/* Label removed */}
           <Textarea
             id="improvement"
-            placeholder="..."
             value={improvement}
             onChange={(e) => setImprovement(e.target.value)}
-            className="flex-grow resize-none border-none focus:ring-0 bg-transparent p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
+             className="flex-grow resize-none border-none focus:ring-0 bg-transparent p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0 text-muted-foreground focus:text-foreground"
+             rows={10}
           />
         </div>
       </div>
     </div>
   );
 }
+
+    
