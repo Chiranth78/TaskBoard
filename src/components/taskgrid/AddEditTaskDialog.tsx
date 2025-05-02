@@ -107,7 +107,7 @@ export default function AddEditTaskDialog({
       onSave({
         ...taskData,
         completed: false,
-        updatedAt: new Date().toISOString(),
+       updatedAt: new Date(),
       } as Omit<Task, 'id' | 'createdAt'>);
       onClose();
     }
