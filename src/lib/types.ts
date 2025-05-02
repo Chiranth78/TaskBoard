@@ -8,18 +8,16 @@ export interface TaskList {
 
 export interface Task {
   id: string;
-  listId: string; // Link to a TaskList
+  listId: string;
   title: string;
   description?: string;
-  dueDate?: Date | string; // Allow string for easier state management/form handling initially
-  priority: 'low' | 'medium' | 'high'; // Keep priority for potential sorting/filtering later
+  dueDate?: Date | string;
+  priority: 'low' | 'medium' | 'high';
   completed: boolean;
-  isStarred?: boolean; // For marking important tasks
-  createdAt: Date;
-  updatedAt: Date; // Added update timestamp
-  // gridPosition is no longer needed for list view
-  // gridPosition?: { row: number; col: number }; // For grid layout
-  category?: string; // Optional category
+  isStarred?: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  category?: string;
 }
 
 // Structure for the new journal editor grid layout
