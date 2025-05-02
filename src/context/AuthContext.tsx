@@ -91,6 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Handle specific Firebase auth errors
       switch (error.code) {
           case 'auth/api-key-not-valid':
+          case 'auth/invalid-api-key': // Handle this code as well
             description = "Invalid Firebase API Key. Please check your configuration.";
             break;
           case 'auth/popup-closed-by-user':
