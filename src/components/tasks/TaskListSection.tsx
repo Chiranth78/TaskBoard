@@ -6,7 +6,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button'; // Imported buttonVariants
 import { Input } from '@/components/ui/input';
 import { Plus, ListChecks, MoreVertical, ArrowUpDown, Trash2 } from 'lucide-react'; // Added Trash2
-// Removed TaskListTabs import
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import TaskItem from './TaskItem';
 import CompletedTasksAccordion from './CompletedTasksAccordion';
@@ -18,7 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator, // Added Separator
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
     AlertDialog,
@@ -61,14 +60,16 @@ export default function TaskListSection({
   const [newListName, setNewListName] = useState('');
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = useState(false);
   const [listToDelete, setListToDelete] = useState<TaskList | null>(null);
+  const [completionAudio, setCompletionAudio] = useState<HTMLAudioElement | null>(null);
 
   const { toast } = useToast();
 
   useEffect(() => {
     setIsMounted(true);
-    // No need to set default selectedListId here, parent handles it
+    // Preload the audio file - NOTE: Add 'task-complete.mp3' to public/sounds/
+    setCompletionAudio(new Audio('/sounds/task-complete.mp3'));
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Depend only on initial lists
+  }, []);
 
 
    useEffect(() => {
@@ -135,6 +136,16 @@ export default function TaskListSection({
       })
     );
      toast({ title: "Task Updated", description: `"${taskTitle}" marked as ${isComplete ? 'complete' : 'incomplete'}.` });
+
+     // Play sound effect if task is marked as complete
+     if (isComplete && completionAudio) {
+        completionAudio.play().catch(error => {
+            // Autoplay was prevented or another error occurred
+             console.error("Audio playback failed:", error);
+             // Optionally inform the user if playback failed silently
+             // toast({ title: "Sound Error", description: "Could not play completion sound.", variant: "destructive" });
+        });
+     }
     // TODO: API call to update task
   };
 
@@ -315,7 +326,8 @@ export default function TaskListSection({
                             <DropdownMenuSeparator />
                             {/* The AlertDialogTrigger now wraps the DropdownMenuItem */}
                             {/* The onSelect handler sets state to open the dialog */}
-                            <AlertDialogTrigger asChild>
+                             {/* Use AlertDialogTrigger within DropdownMenuItem for delete confirmation */}
+                             <AlertDialogTrigger asChild>
                                 <DropdownMenuItem
                                     className="text-destructive focus:text-destructive focus:bg-destructive/10"
                                     onSelect={(e) => {
@@ -325,7 +337,7 @@ export default function TaskListSection({
                                 >
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete list
                                 </DropdownMenuItem>
-                            </AlertDialogTrigger>
+                             </AlertDialogTrigger>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
