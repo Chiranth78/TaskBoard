@@ -2,9 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - master
-  workflow_dispatch:
+    branches: ["master"]
 
 jobs:
   build-and-deploy:
@@ -13,7 +11,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -21,17 +19,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build
+      - name: Build Next.js application
         run: npm run build
-
+        
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.5.0
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          branch: gh-pages
           folder: .next
-          clean: true
-          commit-message: |
-            Deploy to GitHub Pages
-            
-            Automated deployment from GitHub Actions.
-
+          branch: gh-pages
