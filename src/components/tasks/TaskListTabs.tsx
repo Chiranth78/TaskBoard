@@ -20,16 +20,20 @@ export default function TaskListTabs({
   onSelectList,
   onAddList,
 }: TaskListTabsProps) {
-  // Ensure selectedListId is valid or default to the first list if available
-  const currentListId = lists.find(list => list.id === selectedListId)
-    ? selectedListId
-    : lists[0]?.id ?? ''; // Fallback to empty string if no lists
+  // Ensure selectedListId is a valid list ID within the current lists.
+  const validListId = lists.find(list => list.id === selectedListId)?.id;
+
+  // If the selectedListId isn't valid (null or list doesn't exist),
+  // try using the first list's ID. If no lists exist, it will be undefined.
+  // The Tabs component expects `string | undefined` for its value prop.
+  const currentTabsValue = validListId ?? lists[0]?.id;
 
   return (
      // Removed border-b, pb-2, mb-4. Padding/margin handled by parent container (page.tsx)
      <div className="flex items-center space-x-2">
         <ScrollArea className="w-full whitespace-nowrap">
-            <Tabs value={currentListId} onValueChange={onSelectList} className="w-max">
+            {/* Pass currentTabsValue (string | undefined) to the value prop */}
+            <Tabs value={currentTabsValue} onValueChange={onSelectList} className="w-max">
                 {/* Reduced vertical padding in TabsList for tighter fit */}
                 <TabsList className="bg-transparent p-0 h-auto gap-1">
                 {lists.map((list) => (
@@ -53,3 +57,4 @@ export default function TaskListTabs({
      </div>
   );
 }
+
