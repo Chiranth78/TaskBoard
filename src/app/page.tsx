@@ -3,7 +3,7 @@
 
 import type { Task, TaskList, JournalEntry } from '@/lib/types';
 import { useState, useEffect } from 'react';
-import { startOfDay } from 'date-fns'; // Import startOfDay
+import { startOfDay } from 'date-fns';
 import TaskListSection from "@/components/tasks/TaskListSection";
 import JournalSection from "@/components/journal/JournalSection";
 import AppHeader from "@/components/layout/AppHeader";
@@ -22,15 +22,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-// Import Journal-related components that are now part of JournalEditorGrid or JournalSection
-// We might not need Greeting, QuoteBlock, WeekCalendar, JournalList directly here anymore
-// depending on whether the 'list' view is kept or replaced entirely by the editor.
-// Assuming the 'list' view is replaced by the editor grid:
-// import Greeting from '@/components/journal/Greeting';
-// import QuoteBlock from '@/components/journal/QuoteBlock';
-// import WeekCalendar from '@/components/journal/WeekCalendar';
-// import JournalList from '@/components/journal/JournalList';
-// import { Separator } from '@/components/ui/separator';
+import Greeting from '@/components/journal/Greeting';
+import QuoteBlock from '@/components/journal/QuoteBlock';
+import WeekCalendar from '@/components/journal/WeekCalendar';
+import JournalList from '@/components/journal/JournalList';
+import { Separator } from '@/components/ui/separator';
 
 // Mock data - replace with actual data fetching
 const mockTaskLists: TaskList[] = [
@@ -107,8 +103,8 @@ export default function Home() {
   const [newListName, setNewListName] = useState('');
   // State for the currently selected date in the journal editor
   const [selectedJournalDate, setSelectedJournalDate] = useState<Date>(startOfDay(new Date()));
-  // journalViewMode might be redundant now if journal view always shows the editor
-  // const [journalViewMode, setJournalViewMode] = useState<'list' | 'edit'>('edit'); // Default to editor
+  // State to control Journal view (list or editor)
+  const [journalViewMode, setJournalViewMode] = useState<'list' | 'edit'>('list'); // Default to list view
   const { toast } = useToast();
 
   useEffect(() => {
@@ -119,11 +115,12 @@ export default function Home() {
       else if (activeView === 'tasks' && taskLists.length === 0) {
           setSelectedListId(null);
       }
+      // Ensure journal is in list mode when switching to journal view
+      // if (activeView === 'journal') {
+      //    setJournalViewMode('list');
+      // }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskLists, activeView]); // Run when taskLists or activeView changes
-
-  // Removed useEffect for journalViewMode as it's always 'edit' now
-
+  }, [taskLists, activeView]);
 
   const handleUpdateTasks = (updatedTasks: Task[]) => {
     setTasks(updatedTasks);
@@ -136,7 +133,7 @@ export default function Home() {
   const handleUpdateJournalEntries = (updatedEntries: JournalEntry[]) => {
     setJournalEntries(updatedEntries);
      // Keep the editor view active after saving
-     // setJournalViewMode('edit');
+     setJournalViewMode('edit');
   }
 
   const handleSelectList = (listId: string | null) => {
@@ -168,8 +165,25 @@ export default function Home() {
     // Handler for date changes in the Journal editor
     const handleJournalDateChange = (newDate: Date) => {
         setSelectedJournalDate(startOfDay(newDate));
+        // Optionally switch to editor view if a date is selected in the calendar?
+        // setJournalViewMode('edit');
     };
 
+    // Handler to switch to Journal Editor view (e.g., when clicking a journal book)
+    const handleJournalClick = (entry?: JournalEntry) => {
+        // If an entry is provided, set the date to that entry's date
+        // Otherwise, default to today for the new entry grid
+        const dateToEdit = entry?.date ? startOfDay(new Date(entry.date)) : startOfDay(new Date());
+        setSelectedJournalDate(dateToEdit);
+        setJournalViewMode('edit');
+    };
+
+    // Handler to reset Journal view to List mode
+    const resetJournalView = () => {
+        setJournalViewMode('list');
+        // Maybe reset selected date to today when going back to list?
+        // setSelectedJournalDate(startOfDay(new Date()));
+    };
 
   return (
     <div className="flex flex-col h-screen"> {/* Use h-screen for full height */}
@@ -192,16 +206,33 @@ export default function Home() {
       {/* Adjust padding and flex behavior */}
       <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 pb-20"> {/* Added overflow-y-auto */}
 
-        {/* Journal View - Always shows the editor grid */}
+        {/* Journal View */}
         {activeView === 'journal' && (
-             // Pass the selected date and handler to the JournalSection
-             <JournalSection
-                initialEntries={journalEntries}
-                tasks={tasks}
-                onEntriesChange={handleUpdateJournalEntries}
-                selectedDate={selectedJournalDate}
-                onDateChange={handleJournalDateChange}
-             />
+            <>
+                {journalViewMode === 'list' && (
+                     <div className="space-y-6">
+                        <Greeting />
+                        <QuoteBlock />
+                        <WeekCalendar selectedDate={selectedJournalDate} onDateSelect={handleJournalDateChange} />
+                        <Separator />
+                        <JournalList
+                            entries={journalEntries}
+                            onJournalClick={handleJournalClick} // Pass handler to navigate to editor
+                        />
+                     </div>
+                )}
+                 {journalViewMode === 'edit' && (
+                     <JournalSection
+                        initialEntries={journalEntries}
+                        tasks={tasks}
+                        onEntriesChange={handleUpdateJournalEntries}
+                        selectedDate={selectedJournalDate}
+                        onDateChange={handleJournalDateChange}
+                        // Add a way to go back to the list view, maybe a prop or button inside JournalSection
+                        // onBackToList={resetJournalView}
+                     />
+                 )}
+            </>
         )}
 
          {/* Tasks View */}
