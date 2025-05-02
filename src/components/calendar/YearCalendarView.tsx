@@ -21,6 +21,7 @@ import {
     isWithinInterval,
     parseISO,
     isValid,
+    addDays, // Added addDays
 } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -98,13 +99,13 @@ export default function YearCalendarView({ journalEntries }: YearCalendarViewPro
                             <div
                                 key={day.toString()}
                                 className={cn(
-                                    "aspect-square flex items-center justify-center rounded text-xs",
-                                    isHighlighted ? "bg-primary/70 text-primary-foreground" : "bg-muted/30",
+                                    "aspect-square flex items-center justify-center rounded text-xs", // Make font smaller
+                                    isHighlighted ? "bg-primary/70 text-primary-foreground" : "bg-muted/30 text-muted-foreground", // Dim non-highlighted days
                                     isToday(day) && "ring-1 ring-ring ring-offset-1 ring-offset-background", // Highlight today
                                 )}
                             >
-                                {/* Optional: Show day number */}
-                                {/* {format(day, 'd')} */}
+                                {/* Show day number */}
+                                {format(day, 'd')}
                             </div>
                         );
                     })}
