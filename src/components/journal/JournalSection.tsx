@@ -14,9 +14,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface JournalSectionProps {
   initialEntries: JournalEntry[];
   tasks: Task[]; // Pass tasks to potentially link them
+  onEntriesChange: (entries: JournalEntry[]) => void; // Add callback prop
 }
 
-export default function JournalSection({ initialEntries, tasks }: JournalSectionProps) {
+export default function JournalSection({ initialEntries, tasks, onEntriesChange }: JournalSectionProps) {
   const [entries, setEntries] = useState<JournalEntry[]>(initialEntries);
   const [currentEntryContent, setCurrentEntryContent] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
@@ -27,14 +28,24 @@ export default function JournalSection({ initialEntries, tasks }: JournalSection
     setIsMounted(true);
     loadEntryForDate(selectedDate);
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, initialEntries]);
+  }, [selectedDate]); // Only depend on selectedDate, initialEntries load handled below
+
+
+   // Update local state if initial props change
+   useEffect(() => {
+     setEntries(initialEntries);
+     // Reload content if the initial entries changed for the currently selected date
+     loadEntryForDate(selectedDate);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [initialEntries]);
 
 
   const loadEntryForDate = (date: Date) => {
       const dateString = format(date, 'yyyy-MM-dd');
       const foundEntry = entries.find(entry => {
          try {
-            const entryDateValue = typeof entry.date === 'string' ? parseISO(entry.date) : entry.date;
+            // Use startOfDay for comparison to avoid time zone issues if dates are stored with time
+            const entryDateValue = typeof entry.date === 'string' ? startOfDay(parseISO(entry.date)) : startOfDay(entry.date);
             // Check if entryDateValue is a valid date before formatting
             return isValid(entryDateValue) && format(entryDateValue, 'yyyy-MM-dd') === dateString;
          } catch (error) {
@@ -49,7 +60,7 @@ export default function JournalSection({ initialEntries, tasks }: JournalSection
      const dateString = format(selectedDate, 'yyyy-MM-dd');
     const existingEntryIndex = entries.findIndex(entry => {
         try {
-            const entryDateValue = typeof entry.date === 'string' ? parseISO(entry.date) : entry.date;
+            const entryDateValue = typeof entry.date === 'string' ? startOfDay(parseISO(entry.date)) : startOfDay(entry.date);
             return isValid(entryDateValue) && format(entryDateValue, 'yyyy-MM-dd') === dateString;
         } catch (error) {
             console.error("Error parsing date:", entry.date, error);
@@ -60,22 +71,23 @@ export default function JournalSection({ initialEntries, tasks }: JournalSection
 
     // Filter tasks completed on the selected date
     const completedTasksToday = tasks.filter(task => {
-        if (!task.completed || !task.dueDate) return false;
+        if (!task.completed || !task.updatedAt) return false; // Use updatedAt for completion date
         try {
-            const dueDateValue = typeof task.dueDate === 'string' ? parseISO(task.dueDate) : task.dueDate;
-            return isValid(dueDateValue) && format(startOfDay(dueDateValue), 'yyyy-MM-dd') === dateString;
+            // Ensure updatedAt is treated as Date before formatting
+            const completedDate = typeof task.updatedAt === 'string' ? parseISO(task.updatedAt) : task.updatedAt;
+             return isValid(completedDate) && format(startOfDay(completedDate), 'yyyy-MM-dd') === dateString;
         } catch (error) {
-            console.error("Error parsing task due date:", task.dueDate, error);
+            console.error("Error parsing task completion date:", task.updatedAt, error);
             return false;
         }
     }).map(task => task.id);
 
 
     let savedEntry: JournalEntry | null = null;
+    let updatedEntries: JournalEntry[] = [...entries]; // Create a copy to modify
 
     if (existingEntryIndex > -1) {
       // Update existing entry
-      const updatedEntries = [...entries];
       updatedEntries[existingEntryIndex] = {
         ...updatedEntries[existingEntryIndex],
         content: currentEntryContent,
@@ -83,8 +95,6 @@ export default function JournalSection({ initialEntries, tasks }: JournalSection
         relatedTaskIds: completedTasksToday, // Update related tasks
       };
       savedEntry = updatedEntries[existingEntryIndex];
-      setEntries(updatedEntries);
-      // TODO: API call to update entry
       console.log("Journal entry updated:", savedEntry);
 
     } else {
@@ -98,14 +108,18 @@ export default function JournalSection({ initialEntries, tasks }: JournalSection
         updatedAt: new Date(),
       };
       savedEntry = newEntry;
-      setEntries([...entries, newEntry]);
-      // TODO: API call to create entry
+      updatedEntries.push(newEntry); // Add new entry to the copied array
       console.log("New journal entry created:", newEntry);
     }
+
+    setEntries(updatedEntries); // Update local state
+    onEntriesChange(updatedEntries); // Notify parent component of the change
+
      toast({
         title: "Journal Entry Saved",
         description: `Your entry for ${format(selectedDate, 'PPP')} has been saved.`,
      });
+    // TODO: API call to update/create entry
   };
 
   const handlePreviousDay = () => {

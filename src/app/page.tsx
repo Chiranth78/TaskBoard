@@ -56,6 +56,7 @@ export default function Home() {
   const [activeView, setActiveView] = useState<'journal' | 'tasks' | 'calendar' | 'search'>('tasks'); // Default to tasks view
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [taskLists, setTaskLists] = useState<TaskList[]>(mockTaskLists);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(mockJournalEntries); // Add state for journal entries
   const [selectedListId, setSelectedListId] = useState<string | null>(null); // Initialize to null
   const [isAddListDialogOpen, setIsAddListDialogOpen] = useState(false); // Add list dialog state moved here
   const [newListName, setNewListName] = useState(''); // New list name state moved here
@@ -81,6 +82,11 @@ export default function Home() {
 
   const handleUpdateTaskLists = (updatedTaskLists: TaskList[]) => {
     setTaskLists(updatedTaskLists);
+    // TODO: Persist changes
+  }
+
+  const handleUpdateJournalEntries = (updatedEntries: JournalEntry[]) => {
+    setJournalEntries(updatedEntries);
     // TODO: Persist changes
   }
 
@@ -118,7 +124,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <AppHeader />
+      <AppHeader journalEntries={journalEntries} /> {/* Pass journal entries to header */}
 
       {/* Render TaskListTabs below header only for 'tasks' view */}
       {activeView === 'tasks' && (
@@ -138,7 +144,11 @@ export default function Home() {
 
         {/* Main content area - Render components based on activeView */}
         {activeView === 'journal' && (
-             <JournalSection initialEntries={mockJournalEntries} tasks={tasks} />
+             <JournalSection
+                initialEntries={journalEntries}
+                tasks={tasks}
+                onEntriesChange={handleUpdateJournalEntries} // Pass update handler
+            />
          )}
          {activeView === 'tasks' && (
             // No need to wrap TaskListSection in AlertDialog here anymore
