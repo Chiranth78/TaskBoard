@@ -1,40 +1,47 @@
 
 "use client";
 
-import type { JournalEntry, Task } from '@/lib/types';
+import type { JournalEntry, Task, JournalContentGrid } from '@/lib/types';
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { format, parseISO, startOfDay, isValid } from 'date-fns';
-import { Save, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import JournalEditorGrid from './JournalEditorGrid'; // Import the new grid editor
 
 interface JournalSectionProps {
   initialEntries: JournalEntry[];
   tasks: Task[];
   onEntriesChange: (entries: JournalEntry[]) => void;
+  // Add props to control editor state from parent (page.tsx)
+  selectedDate: Date;
+  onDateChange: (date: Date) => void;
 }
 
-export default function JournalSection({ initialEntries, tasks, onEntriesChange }: JournalSectionProps) {
+export default function JournalSection({
+    initialEntries,
+    tasks,
+    onEntriesChange,
+    selectedDate, // Receive selected date from parent
+    onDateChange, // Receive date change handler from parent
+}: JournalSectionProps) {
   const [entries, setEntries] = useState<JournalEntry[]>(initialEntries);
-  const [currentEntryContent, setCurrentEntryContent] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
+  // State to hold the structured data for the current entry's grid
+  const [currentEntryGridData, setCurrentEntryGridData] = useState<JournalContentGrid | undefined>(undefined);
   const [isMounted, setIsMounted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Add saving state
   const { toast } = useToast();
 
   useEffect(() => {
     setIsMounted(true);
+    // Load entry for the selected date when component mounts or date changes
     loadEntryForDate(selectedDate);
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate]);
+  }, [selectedDate, entries]); // Reload when date or entries list changes
 
-
-   useEffect(() => {
+  useEffect(() => {
+     // Update local entries state if initialEntries prop changes
      setEntries(initialEntries);
-     loadEntryForDate(selectedDate);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      // Note: loadEntryForDate is called by the selectedDate effect
    }, [initialEntries]);
 
 
@@ -42,6 +49,7 @@ export default function JournalSection({ initialEntries, tasks, onEntriesChange 
       const dateString = format(date, 'yyyy-MM-dd');
       const foundEntry = entries.find(entry => {
          try {
+            // Ensure consistent date comparison by using startOfDay
             const entryDateValue = typeof entry.date === 'string' ? startOfDay(parseISO(entry.date)) : startOfDay(entry.date);
             return isValid(entryDateValue) && format(entryDateValue, 'yyyy-MM-dd') === dateString;
          } catch (error) {
@@ -49,12 +57,14 @@ export default function JournalSection({ initialEntries, tasks, onEntriesChange 
              return false;
          }
       });
-      setCurrentEntryContent(foundEntry ? foundEntry.content : '');
+      // Set the grid data from the found entry, or undefined if not found/no grid data
+      setCurrentEntryGridData(foundEntry?.contentGrid);
   }
 
-  const handleSaveEntry = () => {
+  const handleSaveEntry = (gridData: JournalContentGrid) => {
+     setIsSaving(true); // Set saving state
      const dateString = format(selectedDate, 'yyyy-MM-dd');
-    const existingEntryIndex = entries.findIndex(entry => {
+     const existingEntryIndex = entries.findIndex(entry => {
         try {
             const entryDateValue = typeof entry.date === 'string' ? startOfDay(parseISO(entry.date)) : startOfDay(entry.date);
             return isValid(entryDateValue) && format(entryDateValue, 'yyyy-MM-dd') === dateString;
@@ -64,6 +74,7 @@ export default function JournalSection({ initialEntries, tasks, onEntriesChange 
         }
     });
 
+    // Calculate related tasks (optional, can be removed if not needed for grid view)
     const completedTasksToday = tasks.filter(task => {
         if (!task.completed || !task.updatedAt) return false;
         try {
@@ -80,19 +91,24 @@ export default function JournalSection({ initialEntries, tasks, onEntriesChange 
     let updatedEntries: JournalEntry[] = [...entries];
 
     if (existingEntryIndex > -1) {
+      // Update existing entry with new grid data
       updatedEntries[existingEntryIndex] = {
         ...updatedEntries[existingEntryIndex],
-        content: currentEntryContent,
+        contentGrid: gridData, // Save the grid data
+        // Optionally update content if needed, or keep it separate
+        // content: convertGridDataToString(gridData), // Example helper function
         updatedAt: new Date(),
-        relatedTaskIds: completedTasksToday,
+        relatedTaskIds: completedTasksToday, // Update related tasks if needed
       };
       savedEntry = updatedEntries[existingEntryIndex];
 
     } else {
+      // Create a new entry with the grid data
       const newEntry: JournalEntry = {
         id: `journal-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         date: dateString,
-        content: currentEntryContent,
+        contentGrid: gridData,
+        // content: convertGridDataToString(gridData), // Optional: populate legacy content field
         relatedTaskIds: completedTasksToday,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -104,76 +120,45 @@ export default function JournalSection({ initialEntries, tasks, onEntriesChange 
     setEntries(updatedEntries);
     onEntriesChange(updatedEntries); // Notify parent
 
-     toast({
-        title: "Journal Entry Saved",
-        description: `Your entry for ${format(selectedDate, 'PPP')} has been saved.`,
-     });
+    // Simulate save delay for visual feedback (remove in production)
+     setTimeout(() => {
+         setIsSaving(false); // Reset saving state
+         toast({
+            title: "Journal Entry Saved",
+            description: `Your entry for ${format(selectedDate, 'PPP')} has been saved.`,
+         });
+     }, 500); // 0.5 second delay
   };
 
   const handlePreviousDay = () => {
       const prevDay = new Date(selectedDate);
       prevDay.setDate(selectedDate.getDate() - 1);
-      setSelectedDate(startOfDay(prevDay));
+      onDateChange(startOfDay(prevDay)); // Use parent handler to update date
   }
 
   const handleNextDay = () => {
       const nextDay = new Date(selectedDate);
       nextDay.setDate(selectedDate.getDate() + 1);
-      setSelectedDate(startOfDay(nextDay));
+      onDateChange(startOfDay(nextDay)); // Use parent handler to update date
   }
 
 
   if (!isMounted) {
-    // Simplified Skeleton for the editor view
-    return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <Skeleton className="h-6 w-40" />
-                <div className="flex gap-1">
-                    <Skeleton className="h-8 w-8" />
-                    <Skeleton className="h-8 w-8" />
-                </div>
-            </div>
-            <Skeleton className="h-40 w-full" /> {/* Text area skeleton */}
-            <div className="flex justify-end">
-                <Skeleton className="h-9 w-28" /> {/* Save button skeleton */}
-            </div>
-        </div>
-    );
+    // Use the skeleton from JournalEditorGrid for consistency
+    return <JournalEditorGrid selectedDate={selectedDate} initialData={undefined} onSave={()=>{}} onPreviousDay={()=>{}} onNextDay={()=>{}} />;
   }
 
-  // Simplified Layout for Editor - remove Card wrapper if desired, or keep for consistency
+  // Render the JournalEditorGrid component
   return (
-     <div className="space-y-4">
-         <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-foreground">Journal - {format(selectedDate, 'PPP')}</h2>
-             <div className="flex gap-1">
-                 <Button variant="ghost" size="icon" onClick={handlePreviousDay} className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                     <ArrowLeft className="h-5 w-5" />
-                     <span className="sr-only">Previous Day</span>
-                 </Button>
-                 <Button variant="ghost" size="icon" onClick={handleNextDay} className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                    <ArrowRight className="h-5 w-5" />
-                     <span className="sr-only">Next Day</span>
-                 </Button>
-             </div>
-         </div>
-
-        <Textarea
-            placeholder={`What did you accomplish on ${format(selectedDate, 'MMM d')}? Reflect on your day...`}
-            value={currentEntryContent}
-            onChange={(e) => setCurrentEntryContent(e.target.value)}
-            rows={10} // Increased rows for better editing experience
-            className="w-full bg-input border-border focus:ring-primary text-base" // Use text-base for readability
+     <div className="h-full flex flex-col"> {/* Ensure container takes full height */}
+        <JournalEditorGrid
+          selectedDate={selectedDate}
+          initialData={currentEntryGridData}
+          onSave={handleSaveEntry}
+          onPreviousDay={handlePreviousDay}
+          onNextDay={handleNextDay}
+          isSaving={isSaving} // Pass saving state
         />
-
-       <div className="flex justify-end">
-         <Button onClick={handleSaveEntry} size="sm">
-            <Save className="mr-2 h-4 w-4" /> Save Entry
-         </Button>
-      </div>
-    </div>
+     </div>
   );
 }
-
-    

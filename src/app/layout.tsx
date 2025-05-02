@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 // Removed GeistMono import as it was causing errors
@@ -15,9 +16,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Apply dark theme by default and Geist Sans font
-    <html lang="en" className="dark">
-      <body className={`${GeistSans.variable} font-sans antialiased`}>
+    // Apply dark theme by default, Geist Sans font, and ensure full height layout
+    <html lang="en" className="dark h-full">
+      <body className={`${GeistSans.variable} font-sans antialiased flex flex-col h-full`}>
         {children}
         <Toaster /> {/* Add Toaster component here */}
       </body>

@@ -3,8 +3,9 @@
 
 import type { Task, TaskList, JournalEntry } from '@/lib/types';
 import { useState, useEffect } from 'react';
+import { startOfDay } from 'date-fns'; // Import startOfDay
 import TaskListSection from "@/components/tasks/TaskListSection";
-import JournalSection from "@/components/journal/JournalSection"; // Keep for editing
+import JournalSection from "@/components/journal/JournalSection";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNavigation from "@/components/layout/BottomNavigation";
 import TaskListTabs from '@/components/tasks/TaskListTabs';
@@ -21,11 +22,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import Greeting from '@/components/journal/Greeting'; // Import Greeting
-import QuoteBlock from '@/components/journal/QuoteBlock'; // Import QuoteBlock
-import WeekCalendar from '@/components/journal/WeekCalendar'; // Import WeekCalendar
-import JournalList from '@/components/journal/JournalList'; // Import JournalList
-import { Separator } from '@/components/ui/separator'; // Import Separator
+// Import Journal-related components that are now part of JournalEditorGrid or JournalSection
+// We might not need Greeting, QuoteBlock, WeekCalendar, JournalList directly here anymore
+// depending on whether the 'list' view is kept or replaced entirely by the editor.
+// Assuming the 'list' view is replaced by the editor grid:
+// import Greeting from '@/components/journal/Greeting';
+// import QuoteBlock from '@/components/journal/QuoteBlock';
+// import WeekCalendar from '@/components/journal/WeekCalendar';
+// import JournalList from '@/components/journal/JournalList';
+// import { Separator } from '@/components/ui/separator';
 
 // Mock data - replace with actual data fetching
 const mockTaskLists: TaskList[] = [
@@ -50,46 +55,74 @@ const mockTasks: Task[] = [
    { id: '13', listId: 'list-1', title: 'User Authentication', priority: 'medium', completed: true, createdAt: new Date(Date.now() - 86400000 * 7), updatedAt: new Date() }, // Completed 1 week ago
 ];
 
+// Example with contentGrid data
 const mockJournalEntries: JournalEntry[] = [
-  { id: 'j1', date: '2024-07-27', content: 'Started working on the homepage design.', createdAt: new Date(), updatedAt: new Date(), relatedTaskIds: ['1'] },
-  { id: 'j2', date: '2024-07-28', content: 'Completed the project documentation draft.', createdAt: new Date(), updatedAt: new Date(), relatedTaskIds: ['3'] },
+  {
+      id: 'j1',
+      date: '2024-07-27',
+      content: 'Started working on the homepage design.', // Optional legacy content
+      contentGrid: {
+          commitment: 'Finish the wireframes.',
+          gratitude: 'Productive morning coffee.',
+          mustDo: '1. Standup meeting\n2. Code review\n3. Update Jira',
+          improvement: 'Take more breaks.'
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      relatedTaskIds: ['1']
+  },
+  {
+      id: 'j2',
+      date: '2024-07-28',
+      content: 'Completed the project documentation draft.',
+      contentGrid: { // Add grid data for another day
+           commitment: 'Review feedback on docs.',
+           gratitude: 'Team collaboration.',
+           mustDo: '1. Send docs for review\n2. Plan next sprint\n3. Check emails',
+           improvement: 'Delegate the email checking task.'
+       },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      relatedTaskIds: ['3']
+  },
+  // Add an entry for today without grid data initially
+  {
+       id: 'j-today',
+       date: startOfDay(new Date()).toISOString().split('T')[0], // Today's date string
+       content: '', // No initial content
+       contentGrid: undefined, // No initial grid data
+       createdAt: new Date(),
+       updatedAt: new Date(),
+   }
 ];
 
-// Mock data for the journal list view
-const mockJournalsList = [
-    { id: 'my-journal-1', name: 'My journal', imageUrl: 'https://picsum.photos/300/200?random=1', dataAiHint: 'journal cover abstract' },
-    // Add more journals if needed
-];
 
 export default function Home() {
-  const [activeView, setActiveView] = useState<'journal' | 'tasks' | 'calendar' | 'search'>('tasks');
+  const [activeView, setActiveView] = useState<'journal' | 'tasks' | 'calendar' | 'search'>('journal'); // Default to journal view
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [taskLists, setTaskLists] = useState<TaskList[]>(mockTaskLists);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(mockJournalEntries);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [isAddListDialogOpen, setIsAddListDialogOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
-  // State to track if we are viewing the journal list or the entry editor
-  const [journalViewMode, setJournalViewMode] = useState<'list' | 'edit'>('list');
+  // State for the currently selected date in the journal editor
+  const [selectedJournalDate, setSelectedJournalDate] = useState<Date>(startOfDay(new Date()));
+  // journalViewMode might be redundant now if journal view always shows the editor
+  // const [journalViewMode, setJournalViewMode] = useState<'list' | 'edit'>('edit'); // Default to editor
   const { toast } = useToast();
 
   useEffect(() => {
-      if (taskLists.length > 0 && selectedListId === null) {
+      // Set default selected list for Tasks view
+      if (activeView === 'tasks' && taskLists.length > 0 && selectedListId === null) {
           setSelectedListId(taskLists[0].id);
       }
-      else if (taskLists.length === 0) {
+      else if (activeView === 'tasks' && taskLists.length === 0) {
           setSelectedListId(null);
       }
-  }, [taskLists, selectedListId]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskLists, activeView]); // Run when taskLists or activeView changes
 
-  // Reset journal view mode when switching main activeView
-  useEffect(() => {
-    if (activeView !== 'journal') {
-        setJournalViewMode('list');
-    } else {
-        setJournalViewMode('list'); // Default to list when entering journal view
-    }
-  }, [activeView]);
+  // Removed useEffect for journalViewMode as it's always 'edit' now
 
 
   const handleUpdateTasks = (updatedTasks: Task[]) => {
@@ -102,8 +135,8 @@ export default function Home() {
 
   const handleUpdateJournalEntries = (updatedEntries: JournalEntry[]) => {
     setJournalEntries(updatedEntries);
-     // Optionally switch back to list view after saving an entry
-     // setJournalViewMode('list');
+     // Keep the editor view active after saving
+     // setJournalViewMode('edit');
   }
 
   const handleSelectList = (listId: string | null) => {
@@ -127,23 +160,24 @@ export default function Home() {
         };
         const updatedLists = [...taskLists, newList];
         setTaskLists(updatedLists);
-        setSelectedListId(newList.id);
+        setSelectedListId(newList.id); // Automatically select the new list
         setIsAddListDialogOpen(false);
         toast({ title: "List Created", description: `"${newList.name}" added.` });
     };
 
-    // Handler to switch to the journal entry editor view
-    const handleViewJournalEntry = () => {
-        setJournalViewMode('edit');
+    // Handler for date changes in the Journal editor
+    const handleJournalDateChange = (newDate: Date) => {
+        setSelectedJournalDate(startOfDay(newDate));
     };
 
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex flex-col h-screen"> {/* Use h-screen for full height */}
       <AppHeader journalEntries={journalEntries} />
 
+      {/* Conditional Rendering of Task List Tabs Header */}
       {activeView === 'tasks' && (
-         <div className="px-4 md:px-6 pt-3 sticky top-[calc(4rem)] z-10 bg-background border-b border-border pb-3">
+         <div className="px-4 md:px-6 pt-3 sticky top-16 z-10 bg-background border-b border-border pb-3"> {/* Adjusted sticky top */}
             <TaskListTabs
                 lists={taskLists}
                 selectedListId={selectedListId}
@@ -154,32 +188,20 @@ export default function Home() {
        )}
 
 
-      <main className="flex-1 p-4 md:p-6 space-y-4">
+       {/* Main Content Area */}
+      {/* Adjust padding and flex behavior */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 pb-20"> {/* Added overflow-y-auto */}
 
-        {/* Journal View */}
+        {/* Journal View - Always shows the editor grid */}
         {activeView === 'journal' && (
-            <>
-                {journalViewMode === 'list' ? (
-                    // Display the Journal List layout (Greeting, Quote, Calendar, List)
-                    <div className="space-y-6">
-                        <Greeting />
-                        <QuoteBlock
-                            quote="One way to get the most out of life is to look upon it as an adventure."
-                            author="William Feather"
-                        />
-                        <WeekCalendar />
-                        <Separator className="my-4" />
-                        <JournalList journals={mockJournalsList} onViewJournal={handleViewJournalEntry} />
-                    </div>
-                ) : (
-                    // Display the Journal Entry Editor
-                    <JournalSection
-                        initialEntries={journalEntries}
-                        tasks={tasks}
-                        onEntriesChange={handleUpdateJournalEntries}
-                    />
-                )}
-            </>
+             // Pass the selected date and handler to the JournalSection
+             <JournalSection
+                initialEntries={journalEntries}
+                tasks={tasks}
+                onEntriesChange={handleUpdateJournalEntries}
+                selectedDate={selectedJournalDate}
+                onDateChange={handleJournalDateChange}
+             />
         )}
 
          {/* Tasks View */}
@@ -190,7 +212,7 @@ export default function Home() {
                 selectedListId={selectedListId}
                 onTasksChange={handleUpdateTasks}
                 onTaskListsChange={handleUpdateTaskLists}
-                onSelectListChange={handleSelectList}
+                onSelectListChange={handleSelectList} // Pass handler for list changes (like deletion)
              />
          )}
 
@@ -231,9 +253,10 @@ export default function Home() {
 
 
       {/* Sticky Bottom Navigation */}
-      <BottomNavigation activeView={activeView} setActiveView={setActiveView} />
+      {/* Ensure Bottom Navigation doesn't overlap content */}
+      <div className="mt-auto"> {/* Push navigation to bottom */}
+        <BottomNavigation activeView={activeView} setActiveView={setActiveView} />
+      </div>
     </div>
   );
 }
-
-    

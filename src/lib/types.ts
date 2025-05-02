@@ -22,10 +22,19 @@ export interface Task {
   category?: string; // Optional category
 }
 
+// Structure for the new journal editor grid layout
+export interface JournalContentGrid {
+    commitment?: string;
+    gratitude?: string;
+    mustDo?: string;
+    improvement?: string;
+}
+
 export interface JournalEntry {
   id: string;
   date: Date | string; // Date of the entry
-  content: string; // User's journal text
+  content?: string; // User's journal text (kept optional for backward compatibility or simple entries)
+  contentGrid?: JournalContentGrid; // New structure for grid data
   relatedTaskIds?: string[]; // Link to tasks completed/worked on that day
   createdAt: Date;
   updatedAt: Date;
@@ -33,3 +42,4 @@ export interface JournalEntry {
 
 // Used for consistency tracker
 export type JournalEntryDate = string; // YYYY-MM-DD format
+
