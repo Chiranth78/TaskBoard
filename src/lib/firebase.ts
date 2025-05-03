@@ -25,13 +25,13 @@ if (!authDomain) {
 
 
 // Your web app's Firebase configuration using environment variables
-const firebaseConfig = {
-  apiKey: apiKey,
-  authDomain: authDomain,
-  projectId: projectId,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+const firebaseConfig = { 
+  apiKey: "AIzaSyA-28qx7ESIwCka76Pu0O3wDkf1nRSgpFI",
+  authDomain: "taskgrid-gx2rk.firebaseapp.com",
+  projectId: "taskgrid-gx2rk",
+  storageBucket: "taskgrid-gx2rk.firebasestorage.app",
+  messagingSenderId: "1020397139722",
+  appId: "1:1020397139722:web:bf65cf8c82d1dbc5ae2cf3"
 };
 
 // Initialize Firebase
